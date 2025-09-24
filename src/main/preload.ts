@@ -24,6 +24,12 @@ const electronAPI = {
   removeLogListener: () => {
     ipcRenderer.removeAllListeners('log-message');
   },
+
+  // 环境检查
+  checkEnvironments: () => ipcRenderer.invoke('check-environments'),
+
+  // 打开外部链接
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 };
 
 // 将 API 暴露给渲染进程

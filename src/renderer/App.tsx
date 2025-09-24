@@ -4,6 +4,7 @@ import { Box } from '@mui/material';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ExecutionPage from './pages/ExecutionPage';
+import EnvironmentCheckPage from './pages/EnvironmentCheckPage';
 
 const App: React.FC = () => {
   // 从 localStorage 读取认证状态
@@ -11,10 +12,27 @@ const App: React.FC = () => {
     return localStorage.getItem('isAuthenticated') === 'true';
   });
 
+  // 从 localStorage 读取环境检查状态
+  const [isEnvironmentChecked, setIsEnvironmentChecked] = React.useState<boolean>(() => {
+    return localStorage.getItem('isEnvironmentChecked') === 'true';
+  });
+
   // 监听认证状态变化，同步到 localStorage
   const handleAuthChange = (status: boolean) => {
     setIsAuthenticated(status);
     localStorage.setItem('isAuthenticated', status.toString());
+
+    // 登出时清除环境检查状态
+    if (!status) {
+      setIsEnvironmentChecked(false);
+      localStorage.removeItem('isEnvironmentChecked');
+    }
+  };
+
+  // 监听环境检查状态变化
+  const handleEnvironmentCheckComplete = () => {
+    setIsEnvironmentChecked(true);
+    localStorage.setItem('isEnvironmentChecked', 'true');
   };
 
   return (
@@ -24,24 +42,36 @@ const App: React.FC = () => {
           path="/login"
           element={
             isAuthenticated ?
-            <Navigate to="/dashboard" replace /> :
+            <Navigate to="/environment-check" replace /> :
             <LoginPage onLogin={() => handleAuthChange(true)} />
+          }
+        />
+        <Route
+          path="/environment-check"
+          element={
+            isAuthenticated ? (
+              isEnvironmentChecked ?
+              <Navigate to="/dashboard" replace /> :
+              <EnvironmentCheckPage onComplete={handleEnvironmentCheckComplete} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
           }
         />
         <Route
           path="/dashboard"
           element={
-            isAuthenticated ?
+            isAuthenticated && isEnvironmentChecked ?
             <DashboardPage onLogout={() => handleAuthChange(false)} /> :
-            <Navigate to="/login" replace />
+            <Navigate to={isAuthenticated ? "/environment-check" : "/login"} replace />
           }
         />
         <Route
           path="/execution/:type"
           element={
-            isAuthenticated ?
+            isAuthenticated && isEnvironmentChecked ?
             <ExecutionPage /> :
-            <Navigate to="/login" replace />
+            <Navigate to={isAuthenticated ? "/environment-check" : "/login"} replace />
           }
         />
         <Route path="/" element={<Navigate to="/login" replace />} />

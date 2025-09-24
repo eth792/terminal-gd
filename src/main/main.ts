@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import { ScriptExecutor } from './scriptExecutor';
+import { EnvironmentChecker } from './environmentChecker';
 import log from 'electron-log';
 
 // 配置日志
@@ -22,6 +23,7 @@ console.info = log.info;
 
 let mainWindow: BrowserWindow | null = null;
 let scriptExecutor: ScriptExecutor | null = null;
+let environmentChecker: EnvironmentChecker | null = null;
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 console.log('Application Starting...');
@@ -72,6 +74,8 @@ function createWindow(): void {
       mainWindow.show();
       // 创建脚本执行器实例
       scriptExecutor = new ScriptExecutor(mainWindow);
+      // 创建环境检测器实例
+      environmentChecker = new EnvironmentChecker();
     }
   });
 
@@ -158,4 +162,39 @@ ipcMain.handle('stop-all-scripts', async () => {
     scriptExecutor.stopAllProcesses();
   }
   return { success: true };
+});
+
+// 环境检查
+ipcMain.handle('check-environments', async () => {
+  if (!environmentChecker) {
+    return [
+      { name: 'Node.js', version: null, status: 'error', message: '环境检测器未初始化' },
+      { name: 'Python', version: null, status: 'error', message: '环境检测器未初始化' },
+      { name: 'Java', version: null, status: 'error', message: '环境检测器未初始化' },
+    ];
+  }
+
+  try {
+    const results = await environmentChecker.checkAllEnvironments();
+    return results;
+  } catch (error) {
+    log.error('Environment check failed:', error);
+    return [
+      { name: 'Node.js', version: null, status: 'error', message: '检查失败' },
+      { name: 'Python', version: null, status: 'error', message: '检查失败' },
+      { name: 'Java', version: null, status: 'error', message: '检查失败' },
+    ];
+  }
+});
+
+// 打开外部链接
+ipcMain.handle('open-external', async (event, url) => {
+  const { shell } = require('electron');
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    log.error('Failed to open external URL:', error);
+    return { success: false, error: String(error) };
+  }
 });

@@ -70,9 +70,46 @@ export class ScriptExecutor {
    * 检查运行环境
    */
   private async checkEnvironment(type: string): Promise<{ available: boolean; message?: string; version?: string }> {
+    if (type === 'python') {
+      // 对于Python，优先尝试python3，然后尝试python
+      const pythonCommands = ['python3', 'python'];
+
+      for (const cmd of pythonCommands) {
+        try {
+          const { stdout, stderr } = await this.execCommand(cmd, ['--version']);
+          const version = stdout || stderr;
+          return { available: true, version: version.trim() };
+        } catch (error) {
+          continue; // 尝试下一个命令
+        }
+      }
+
+      return {
+        available: false,
+        message: 'Python 未安装或不在 PATH 中（尝试了python3和python命令）',
+      };
+    }
+
+    if (type === 'java') {
+      // 检查Java运行时和编译器
+      try {
+        // 检查java命令
+        const { stdout: javaStdout, stderr: javaStderr } = await this.execCommand('java', ['-version']);
+        const javaVersion = javaStdout || javaStderr;
+
+        // 检查javac命令
+        await this.execCommand('javac', ['-version']);
+
+        return { available: true, version: javaVersion.trim() };
+      } catch (error) {
+        return {
+          available: false,
+          message: 'Java 环境不完整：需要安装 JDK（包含java和javac命令）',
+        };
+      }
+    }
+
     const commands = {
-      python: ['python', '--version'],
-      java: ['java', '-version'],
       nodejs: ['node', '--version'],
     };
 
@@ -121,24 +158,102 @@ export class ScriptExecutor {
   }
 
   /**
+   * 获取Python命令
+   */
+  private async getPythonCommand(): Promise<string> {
+    const pythonCommands = ['python3', 'python'];
+
+    for (const cmd of pythonCommands) {
+      try {
+        await this.execCommand(cmd, ['--version']);
+        return cmd; // 返回第一个可用的命令
+      } catch (error) {
+        continue;
+      }
+    }
+
+    throw new Error('Python 未找到');
+  }
+
+  /**
+   * 编译Java文件
+   */
+  private async compileJavaFile(javaFilePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const process = spawn('javac', [javaFilePath]);
+
+      let stderr = '';
+
+      process.stderr?.on('data', (data) => {
+        const output = data.toString();
+        stderr += output;
+        this.sendLog('ERROR', `编译错误: ${output.trim()}`);
+      });
+
+      process.stdout?.on('data', (data) => {
+        const output = data.toString();
+        this.sendLog('INFO', `编译信息: ${output.trim()}`);
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          this.sendLog('SUCCESS', 'Java文件编译成功');
+          resolve();
+        } else {
+          reject(new Error(`编译失败，退出码: ${code}。错误信息: ${stderr}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(new Error(`编译进程错误: ${error.message}`));
+      });
+    });
+  }
+
+  /**
    * 执行脚本
    */
-  private runScript(type: string, scriptPath: string, args: string[]): Promise<ExecutionResult> {
-    return new Promise((resolve) => {
-      const commands = {
-        python: 'python',
-        java: 'java',
-        nodejs: 'node',
-      };
+  private async runScript(type: string, scriptPath: string, args: string[]): Promise<ExecutionResult> {
+    return new Promise(async (resolve) => {
+      let command: string;
 
-      const command = commands[type as keyof typeof commands];
+      if (type === 'python') {
+        try {
+          command = await this.getPythonCommand();
+        } catch (error) {
+          resolve({
+            success: false,
+            error: 'Python 未找到或不可用',
+          });
+          return;
+        }
+      } else {
+        const commands = {
+          java: 'java',
+          nodejs: 'node',
+        };
+        command = commands[type as keyof typeof commands] || type;
+      }
+
       let processArgs = [scriptPath, ...args];
 
-      // Java 需要特殊处理
+      // Java 需要特殊处理：先编译，再执行
       if (type === 'java') {
-        const dir = path.dirname(scriptPath);
-        const className = path.basename(scriptPath, '.java');
-        processArgs = ['-cp', dir, className, ...args];
+        try {
+          // 先编译Java文件
+          await this.compileJavaFile(scriptPath);
+
+          const dir = path.dirname(scriptPath);
+          const className = path.basename(scriptPath, '.java');
+          command = 'java';
+          processArgs = ['-cp', dir, className, ...args];
+        } catch (compileError) {
+          resolve({
+            success: false,
+            error: `Java编译失败: ${compileError}`,
+          });
+          return;
+        }
       }
 
       const process = spawn(command, processArgs);
