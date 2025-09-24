@@ -1,0 +1,8 @@
+# pnpm workspace 配置
+packages:
+  # 主项目
+  - '.'
+
+  # 如果有子包，可以在这里添加
+  # - 'packages/*'
+  # - 'apps/*'
