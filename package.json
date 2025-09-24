@@ -23,8 +23,8 @@
     "setup": "node scripts/dev-setup.js",
     "validate": "node scripts/validate-app.js",
     "postinstall": "electron-builder install-app-deps",
-    "pack:mac": "rm -rf dist && rm -rf build && pnpm run build &&  electron-builder --mac",
-    "pack:win": "rmdir /s /q dist 2>nul & rmdir /s /q build 2>nul & set  && pnpm run build && electron-builder --win"
+    "pack:mac": "rm -rf dist && rm -rf build && pnpm run build && electron-builder --mac",
+    "pack:win": "rmdir /s /q dist 2>nul & rmdir /s /q build 2>nul & pnpm run build & electron-builder --win"
   },
   "keywords": [
     "rpa",
@@ -80,7 +80,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": "dmg",
-      "icon": "build/icon.icns"
+      "icon": "src/icon.icns"
     },
     "win": {
       "target": [
@@ -89,7 +89,7 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "src/icon.ico"
     }
   },
   "pnpm": {
