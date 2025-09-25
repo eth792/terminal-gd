@@ -35,49 +35,42 @@ The application uses Electron's IPC mechanism for main-renderer process communic
 
 ## Development Commands
 
-This project uses **pnpm** as the package manager for better performance and dependency management:
+This project uses **npm** as the package manager:
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Development mode (starts both Vite dev server and Electron)
-pnpm dev
+npm run dev
 # or
-pnpm start
+npm start
 
 # Build for production
-pnpm build
+npm run build
 
 # Build individual parts
-pnpm build:main      # Build Electron main process
-pnpm build:renderer  # Build React renderer
+npm run build:main      # Build Electron main process
+npm run build:renderer  # Build React renderer
 
 # Package application
-pnpm electron:pack
+npm run electron:pack
 
 # Start built application (production mode)
-pnpm electron:start
+npm run electron:start
 
 # Run tests
-pnpm test
+npm test
 
 # Lint code
-pnpm lint
+npm run lint
 
 # Type checking (for TypeScript)
-pnpm type-check
+npm run type-check
 
 # Clean build artifacts and cache
-pnpm clean
+npm run clean
 ```
-
-### Why pnpm?
-
-- **Faster installs**: Uses hard links and symlinks to reduce disk usage
-- **Strict dependency resolution**: Prevents phantom dependencies
-- **Better monorepo support**: Native workspace support
-- **Disk efficient**: Global content-addressable storage
 
 ## Performance Requirements
 

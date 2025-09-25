@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, shell } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import { ScriptExecutor } from './scriptExecutor';
@@ -85,6 +85,7 @@ function createWindow(): void {
       scriptExecutor.stopAllProcesses();
       scriptExecutor = null;
     }
+    environmentChecker = null;
     mainWindow = null;
   });
 }
@@ -131,7 +132,7 @@ ipcMain.handle('get-app-version', () => {
 });
 
 // 执行脚本的 IPC 处理器
-ipcMain.handle('execute-script', async (event, scriptData) => {
+ipcMain.handle('execute-script', async (_event, scriptData) => {
   if (!scriptExecutor) {
     return { success: false, error: '脚本执行器未初始化' };
   }
@@ -188,8 +189,7 @@ ipcMain.handle('check-environments', async () => {
 });
 
 // 打开外部链接
-ipcMain.handle('open-external', async (event, url) => {
-  const { shell } = require('electron');
+ipcMain.handle('open-external', async (_event, url: string) => {
   try {
     await shell.openExternal(url);
     return { success: true };

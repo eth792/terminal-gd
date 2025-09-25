@@ -21,10 +21,10 @@ export interface ExecutionResult {
 
 // 日志相关类型
 export interface LogMessage {
-  id: string;
-  level: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
+  id?: string;
+  level: string;
   message: string;
-  timestamp: Date;
+  timestamp: string;
 }
 
 // RPA 功能类型
@@ -47,4 +47,52 @@ export interface ExecutionState {
   progress: number;
   currentStep?: string;
   logs: LogMessage[];
+}
+
+// 环境检测相关类型
+export interface EnvironmentResult {
+  name: string;
+  version: string | null;
+  status: 'success' | 'error' | 'warning';
+  message: string;
+}
+
+// 系统资源类型
+export interface SystemResources {
+  cpu: number;
+  memory: number;
+}
+
+// Electron API 类型定义
+export interface ElectronAPI {
+  // 应用信息
+  getAppVersion: () => Promise<string>;
+
+  // 脚本执行
+  executeScript: (scriptData: ScriptExecutionData) => Promise<ExecutionResult>;
+
+  // 系统资源
+  getSystemResources: () => Promise<SystemResources>;
+
+  // 停止所有脚本
+  stopAllScripts: () => Promise<{ success: boolean }>;
+
+  // 日志监听
+  onLogMessage: (callback: (message: LogMessage) => void) => () => void;
+
+  // 移除日志监听器
+  removeLogListener: () => void;
+
+  // 环境检查
+  checkEnvironments: () => Promise<EnvironmentResult[]>;
+
+  // 打开外部链接
+  openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+// 扩展Window接口
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
 }

@@ -63,7 +63,7 @@ const ExecutionPage: React.FC = () => {
       id: Date.now().toString(),
       level,
       message,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     setExecutionState(prev => ({
@@ -117,7 +117,7 @@ const ExecutionPage: React.FC = () => {
           addLog('SUCCESS', '脚本执行完成');
           setExecutionState(prev => ({ ...prev, status: 'completed' }));
         } else {
-          addLog('ERROR', `执行失败: ${result.message}`);
+          addLog('ERROR', `执行失败: ${result.error || '未知错误'}`);
           setExecutionState(prev => ({ ...prev, status: 'error' }));
         }
       } else {

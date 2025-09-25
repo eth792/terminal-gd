@@ -110,7 +110,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <LoginIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
           <Typography variant="h4" component="h1" gutterBottom>
-            RPA自动化工具
+          电力物资合同履约智能化管理
           </Typography>
           <Typography variant="body2" color="text.secondary">
             请登录以继续使用

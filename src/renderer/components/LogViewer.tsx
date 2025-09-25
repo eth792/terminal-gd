@@ -154,7 +154,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
           <List dense sx={{ p: 0 }}>
             {filteredLogs.map((log, index) => (
               <ListItem
-                key={log.id}
+                key={log.id || `${log.timestamp}-${index}`}
                 sx={{
                   py: 0.5,
                   px: 2,
@@ -177,7 +177,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
                       color="text.secondary"
                       sx={{ fontFamily: 'monospace' }}
                     >
-                      {log.timestamp.toLocaleTimeString()}
+                      {new Date(log.timestamp).toLocaleTimeString()}
                     </Typography>
                   </Box>
 

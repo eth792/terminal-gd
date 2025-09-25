@@ -97,7 +97,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
       <AppBar position="static" elevation={2}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            RPA自动化工具
+          电力物资合同履约智能化管理
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
