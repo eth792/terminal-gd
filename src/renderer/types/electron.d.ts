@@ -8,6 +8,26 @@ export interface ElectronAPI {
   openExternal?: (url: string) => Promise<void>;
 }
 
+declare module '*.jpg' {
+  const value: string;
+  export default value;
+}
+
+declare module '*.jpeg' {
+  const value: string;
+  export default value;
+}
+
+declare module '*.png' {
+  const value: string;
+  export default value;
+}
+
+declare module '*.svg' {
+  const value: string;
+  export default value;
+}
+
 declare global {
   interface Window {
     electronAPI: ElectronAPI;

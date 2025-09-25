@@ -16,7 +16,8 @@
     "jsx": "react-jsx"
   },
   "include": [
-    "src/renderer/**/*"
+    "src/renderer/**/*",
+    "src/types.d.ts"
   ],
   "exclude": [
     "node_modules",

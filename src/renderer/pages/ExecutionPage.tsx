@@ -181,55 +181,56 @@ const ExecutionPage: React.FC = () => {
     <Box sx={{ flexGrow: 1, height: '100vh' }}>
       {/* 顶部操作栏 */}
       <AppBar position="static" elevation={2}>
-        <Toolbar>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Button
             startIcon={<ArrowBack />}
             color="inherit"
             onClick={() => navigate('/dashboard')}
-            sx={{ mr: 2 }}
           >
             返回主页
           </Button>
 
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" color="inherit">
             {getFunctionName(type)}
           </Typography>
 
-          <Chip
-            label={getStatusText(executionState.status)}
-            color={getStatusColor(executionState.status) as any}
-            variant="filled"
-            sx={{ mr: 2 }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Chip
+              label={getStatusText(executionState.status)}
+              color={getStatusColor(executionState.status) as any}
+              variant="filled"
+              sx={{ mr: 2 }}
+            />
 
-          {executionState.status === 'idle' || executionState.status === 'completed' || executionState.status === 'error' ? (
-            <Button
-              variant="contained"
-              startIcon={<PlayArrow />}
-              onClick={handleExecute}
-              disabled={!scriptConfig.code.trim()}
-            >
-              运行
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<Stop />}
-              onClick={handleStop}
-            >
-              停止
-            </Button>
-          )}
+            {executionState.status === 'idle' || executionState.status === 'completed' || executionState.status === 'error' ? (
+              <Button
+                variant="contained"
+                startIcon={<PlayArrow />}
+                onClick={handleExecute}
+                disabled={!scriptConfig.code.trim()}
+              >
+                运行
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<Stop />}
+                onClick={handleStop}
+              >
+                停止
+              </Button>
+            )}
 
-          <Button
-            startIcon={<Refresh />}
-            color="inherit"
-            onClick={handleReset}
-            sx={{ ml: 1 }}
-          >
-            重置
-          </Button>
+            <Button
+              startIcon={<Refresh />}
+              color="inherit"
+              onClick={handleReset}
+              sx={{ ml: 1 }}
+            >
+              重置
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
 

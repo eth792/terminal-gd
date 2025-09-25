@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import { RPAFunction } from '../types';
 import SystemMonitor from '../components/SystemMonitor';
+import logoImage from '../../logo.jpg';
 
 interface DashboardPageProps {
   onLogout: () => void;
@@ -92,10 +93,21 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, height: '100vh' }}>
+    <Box sx={{ flexGrow: 1, height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 顶部应用栏 */}
       <AppBar position="static" elevation={2}>
         <Toolbar>
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+            <img
+              src={logoImage}
+              alt="Logo"
+              style={{
+                height: 40,
+                width: 'auto',
+                marginRight: 8,
+              }}
+            />
+          </Box>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           电力物资合同履约智能化管理
           </Typography>
@@ -135,9 +147,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
       </AppBar>
 
       {/* 主要内容区 */}
-      <Box sx={{ p: 2, px: 3 }}>
+      <Box sx={{ flex: 1, p: 2, px: 3, overflow: 'auto' }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          业务自动化中心
+          电力物资合同履约智能化管理
         </Typography>
 
         <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
@@ -192,22 +204,32 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
             </Grid>
           ))}
         </Grid>
+      </Box>
 
-        {/* 系统监控和状态信息 */}
-        <Box sx={{ mt: 4 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={8}>
-              <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  系统状态：正常运行 | 核心模块：订单生成、收发货、财务报销 | 支持的脚本语言：Python, Java, Node.js
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <SystemMonitor compact updateInterval={10000} />
-            </Grid>
+      {/* 固定在底部的系统监控和状态信息 */}
+      <Box sx={{ 
+        position: 'fixed', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        bgcolor: 'background.paper', 
+        borderTop: 1, 
+        borderColor: 'divider',
+        p: 2,
+        zIndex: 1000
+      }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={8}>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                系统状态：正常运行 | 核心模块：订单生成、收发货、财务报销 | 支持的脚本语言：Python, Java, Node.js
+              </Typography>
+            </Box>
           </Grid>
-        </Box>
+          <Grid item xs={12} md={4}>
+            <SystemMonitor compact updateInterval={10000} />
+          </Grid>
+        </Grid>
       </Box>
     </Box>
   );
