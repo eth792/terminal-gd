@@ -37,7 +37,7 @@ function checkRequiredFiles() {
 function startElectron() {
   checkRequiredFiles();
 
-  const electronPath = path.join(__dirname, '../node_modules/.bin/electron');
+  const electronPath = path.join(__dirname, '../node_modules/.bin/electron' + (process.platform === 'win32' ? '.cmd' : ''));
   const mainPath = path.join(__dirname, '../dist/main.js');
 
   // 设置环境变量
@@ -54,10 +54,14 @@ function startElectron() {
 
   console.log(`📂 主进程路径: ${mainPath}`);
   console.log(`⚡ Electron 路径: ${electronPath}`);
+  // console.log(`调试信息 - Electron 可执行文件路径: ${electronPath}`);
+  // console.log(`调试信息 - 主进程文件路径: ${mainPath}`);
+  // console.log(`调试信息 - 环境变量:`, env);
 
   const child = spawn(electronPath, [mainPath], {
     env,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    shell: true // 在 shell 中执行命令，以确保 .cmd 文件被正确识别和执行
   });
 
   child.on('close', (code) => {
