@@ -30,11 +30,17 @@ console.log('Application Starting...');
 console.log('Environment:', process.env.NODE_ENV);
 
 function createWindow(): void {
+  // 根据平台设置不同的窗口尺寸
+  const isWindows = process.platform === 'win32';
+  const windowWidth = isWindows ? 1400 : 1200; // Windows下宽度设为1400
+  const windowHeight = isWindows ? 900 : 800;  // Windows下高度也稍微增加
+  const minWindowWidth = isWindows ? 1000 : 800; // Windows下最小宽度也增加
+  
   // 创建主窗口
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
+    width: windowWidth,
+    height: windowHeight,
+    minWidth: minWindowWidth,
     minHeight: 600,
     webPreferences: {
       nodeIntegration: false,

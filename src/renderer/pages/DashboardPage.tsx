@@ -218,7 +218,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
         p: 2,
         zIndex: 1000
       }}>
-        <Grid container spacing={2} alignItems="center">
+        <Grid container spacing={2} alignItems="center" justifyContent="space-between">
           <Grid item xs={12} md={8}>
             <Box sx={{ p: 2 }}>
               <Typography variant="body2" color="text.secondary">
@@ -226,7 +226,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
               </Typography>
             </Box>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
             <SystemMonitor compact updateInterval={10000} />
           </Grid>
         </Grid>
