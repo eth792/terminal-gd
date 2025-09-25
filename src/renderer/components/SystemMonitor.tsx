@@ -73,13 +73,13 @@ const SystemMonitor: React.FC<SystemMonitorProps> = ({
   if (compact) {
     return (
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <Chip
+        {/* <Chip
           icon={<CpuIcon />}
           label={`CPU: ${formatPercentage(resources.cpu)}`}
           color={getUsageColor(resources.cpu) as any}
           variant="outlined"
           size="small"
-        />
+        /> */}
         <Chip
           icon={<MemoryIcon />}
           label={`内存: ${formatPercentage(resources.memory)}`}
