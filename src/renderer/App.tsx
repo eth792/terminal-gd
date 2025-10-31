@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ExecutionPage from './pages/ExecutionPage';
 import EnvironmentCheckPage from './pages/EnvironmentCheckPage';
+import ShippingReceivingExecutionPage from './pages/ShippingReceivingExecutionPage';
 
 const App: React.FC = () => {
   // 从 localStorage 读取认证状态
@@ -71,6 +72,14 @@ const App: React.FC = () => {
           element={
             isAuthenticated && isEnvironmentChecked ?
             <ExecutionPage /> :
+            <Navigate to={isAuthenticated ? "/environment-check" : "/login"} replace />
+          }
+        />
+        <Route
+          path="/shipping-receiving"
+          element={
+            isAuthenticated && isEnvironmentChecked ?
+            <ShippingReceivingExecutionPage /> :
             <Navigate to={isAuthenticated ? "/environment-check" : "/login"} replace />
           }
         />

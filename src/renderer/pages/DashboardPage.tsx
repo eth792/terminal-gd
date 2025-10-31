@@ -76,7 +76,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
   };
 
   const handleFunctionClick = (functionType: string) => {
-    navigate(`/execution/${functionType}`);
+    // 收发货使用专用页面
+    if (functionType === 'shipping-receiving') {
+      navigate('/shipping-receiving');
+    } else {
+      navigate(`/execution/${functionType}`);
+    }
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
