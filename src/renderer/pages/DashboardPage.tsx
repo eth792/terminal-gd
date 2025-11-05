@@ -76,9 +76,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout }) => {
   };
 
   const handleFunctionClick = (functionType: string) => {
-    // 收发货使用专用页面
-    if (functionType === 'shipping-receiving') {
+    // 订单生成、收发货和财务报销使用专用页面
+    if (functionType === 'order-generation') {
+      navigate('/order-generation');
+    } else if (functionType === 'shipping-receiving') {
       navigate('/shipping-receiving');
+    } else if (functionType === 'expense-reimbursement') {
+      navigate('/expense-reimbursement');
     } else {
       navigate(`/execution/${functionType}`);
     }

@@ -59,17 +59,12 @@ const ShippingReceivingExecutionPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [steps, setSteps] = useState<StepConfig[]>([
     {
-      enabled: true,
+      enabled: true, // 始终为true,不允许修改
       status: 'idle',
       config: {
-        scannerType: 'flatbed',
-        resolution: '300',
-        colorMode: 'color',
-        outputFormat: 'json',
+        imageFolderPath: '', // 图片文件夹路径
         ocrEngine: 'tesseract',
         language: 'chi_sim+eng',
-        preprocessImage: true,
-        autoRotate: true,
       }
     },
     {
@@ -101,9 +96,31 @@ const ShippingReceivingExecutionPage: React.FC = () => {
     }
   ]);
 
-  const stepLabels = ['扫描纸张', '数据清理', '执行填报'];
+  const stepLabels = ['图片识别', '数据清理', '执行填报'];
 
-  // 选择文件
+  // 选择图片文件夹
+  const handleSelectImageFolder = async () => {
+    if (!window.electronAPI) {
+      addLog('WARNING', 'Electron API 不可用');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.openFileDialog({
+        title: '选择图片文件夹',
+        properties: ['openDirectory'],
+      });
+
+      if (!result.canceled && result.filePath) {
+        updateStepConfig(0, 'imageFolderPath', result.filePath);
+        addLog('INFO', `[${stepLabels[0]}] 已选择图片文件夹: ${result.filePath}`);
+      }
+    } catch (error) {
+      addLog('ERROR', `[${stepLabels[0]}] 选择文件夹失败: ${error}`);
+    }
+  };
+
+  // 选择脚本文件
   const handleSelectFile = async (stepIndex: number) => {
     if (!window.electronAPI) {
       addLog('WARNING', 'Electron API 不可用');
@@ -172,7 +189,8 @@ const ShippingReceivingExecutionPage: React.FC = () => {
 
     try {
       for (let i = 0; i < steps.length; i++) {
-        if (!steps[i].enabled) {
+        // 步骤1(图片识别)不允许跳过
+        if (i !== 0 && !steps[i].enabled) {
           addLog('WARNING', `步骤 ${stepLabels[i]} 已跳过`);
           continue;
         }
@@ -237,65 +255,101 @@ const ShippingReceivingExecutionPage: React.FC = () => {
     }
   };
 
-  // 步骤1: 扫描纸张
+  // 步骤1: 图片识别
   const executeScanningStep = async (config: any) => {
-    addLog('INFO', `📷 扫描器配置: ${config.scannerType}, 分辨率: ${config.resolution}dpi`, 0);
-    addLog('INFO', `OCR引擎: ${config.ocrEngine}, 语言: ${config.language}`, 0);
+    addLog('INFO', `📂 图片文件夹: ${config.imageFolderPath || '未选择'}`, 0);
+    addLog('INFO', `🔍 OCR引擎: ${config.ocrEngine}, 语言: ${config.language}`, 0);
 
-    // 模拟扫描过程
-    addLog('INFO', '正在初始化扫描器...', 0);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    addLog('INFO', '检测到纸张文档，准备扫描...', 0);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    addLog('INFO', '正在扫描第 1 页...', 0);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    if (config.preprocessImage) {
-      addLog('INFO', '正在预处理图像（降噪、纠偏）...', 0);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    if (!config.imageFolderPath) {
+      addLog('WARNING', '未选择图片文件夹，跳过此步骤', 0);
+      return;
     }
 
-    addLog('INFO', '正在执行 OCR 识别...', 0);
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // 模拟图片识别过程
+    addLog('INFO', '正在读取图片文件夹...', 0);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    addLog('INFO', '检测到 3 张图片文件', 0);
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    addLog('INFO', '正在调用 OCR 程序识别图片...', 0);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    addLog('INFO', '正在识别第 1 张图片...', 0);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    addLog('INFO', '正在识别第 2 张图片...', 0);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    addLog('INFO', '正在识别第 3 张图片...', 0);
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // 模拟OCR结果
     const mockOCRResult = {
-      documentType: '收货单',
-      documentNumber: 'SH20241021001',
-      date: '2024-10-21',
-      supplier: '上海电力设备有限公司',
-      items: [
-        { name: '变压器配件', quantity: 5, unit: '套', price: 12500.00 },
-        { name: '绝缘子', quantity: 100, unit: '个', price: 85.50 },
-        { name: '电缆终端头', quantity: 20, unit: '个', price: 320.00 }
-      ],
-      totalAmount: 69550.00
+      folderPath: config.imageFolderPath,
+      imagesProcessed: 3,
+      documents: [
+        {
+          imageName: 'receipt_001.jpg',
+          documentType: '收货单',
+          documentNumber: 'SH20241021001',
+          date: '2024-10-21',
+          supplier: '上海电力设备有限公司',
+          items: [
+            { name: '变压器配件', quantity: 5, unit: '套', price: 12500.00 },
+            { name: '绝缘子', quantity: 100, unit: '个', price: 85.50 },
+            { name: '电缆终端头', quantity: 20, unit: '个', price: 320.00 }
+          ],
+          totalAmount: 69550.00
+        }
+      ]
     };
 
-    addLog('SUCCESS', `✅ OCR 识别完成，识别到 ${mockOCRResult.items.length} 个条目`, 0);
+    addLog('SUCCESS', `✅ OCR 识别完成，共处理 ${mockOCRResult.imagesProcessed} 张图片`, 0);
+    addLog('INFO', `识别到 ${mockOCRResult.documents.length} 个单据`, 0);
     addLog('INFO', `识别结果: ${JSON.stringify(mockOCRResult, null, 2)}`, 0);
 
-    // 调用实际的脚本执行（这里用示例代码）
+    // 调用实际的OCR脚本
     if (window.electronAPI) {
       const scriptCode = `import json
+import os
 
-# 模拟OCR识别结果
+# 图片文件夹路径
+image_folder = r"${config.imageFolderPath}"
+
+print(f"图片文件夹: {image_folder}")
+print(f"正在读取图片文件...")
+
+# 模拟读取图片文件
+image_files = ["receipt_001.jpg", "receipt_002.jpg", "receipt_003.jpg"]
+print(f"检测到 {len(image_files)} 张图片")
+
+# 模拟OCR识别
+print("正在调用 OCR 程序识别图片...")
+
+# 模拟OCR结果
 ocr_result = {
-    "documentType": "收货单",
-    "documentNumber": "SH20241021001",
-    "date": "2024-10-21",
-    "supplier": "上海电力设备有限公司",
-    "items": [
-        {"name": "变压器配件", "quantity": 5, "unit": "套", "price": 12500.00},
-        {"name": "绝缘子", "quantity": 100, "unit": "个", "price": 85.50},
-        {"name": "电缆终端头", "quantity": 20, "unit": "个", "price": 320.00}
-    ],
-    "totalAmount": 69550.00
+    "folderPath": image_folder,
+    "imagesProcessed": len(image_files),
+    "documents": [
+        {
+            "imageName": "receipt_001.jpg",
+            "documentType": "收货单",
+            "documentNumber": "SH20241021001",
+            "date": "2024-10-21",
+            "supplier": "上海电力设备有限公司",
+            "items": [
+                {"name": "变压器配件", "quantity": 5, "unit": "套", "price": 12500.00},
+                {"name": "绝缘子", "quantity": 100, "unit": "个", "price": 85.50},
+                {"name": "电缆终端头", "quantity": 20, "unit": "个", "price": 320.00}
+            ],
+            "totalAmount": 69550.00
+        }
+    ]
 }
 
-print("OCR识别完成: {} 个条目".format(len(ocr_result['items'])))
+print(f"OCR 识别完成，共处理 {ocr_result['imagesProcessed']} 张图片")
+print(f"识别到 {len(ocr_result['documents'])} 个单据")
 print(json.dumps(ocr_result, ensure_ascii=False, indent=2))
 `;
 
@@ -307,12 +361,12 @@ print(json.dumps(ocr_result, ensure_ascii=False, indent=2))
         });
 
         if (result.success) {
-          addLog('SUCCESS', '脚本执行成功', 0);
+          addLog('SUCCESS', 'OCR 脚本执行成功', 0);
         } else {
-          addLog('ERROR', `脚本执行失败: ${result.error}`, 0);
+          addLog('ERROR', `OCR 脚本执行失败: ${result.error}`, 0);
         }
       } catch (error) {
-        addLog('WARNING', `脚本执行遇到问题，使用模拟数据: ${error}`, 0);
+        addLog('WARNING', `OCR 脚本执行遇到问题，使用模拟数据: ${error}`, 0);
       }
     }
   };
@@ -765,7 +819,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                                 isCompleted ? '已完成' :
                                 isError ? '错误' :
                                 isRunning ? '运行中' :
-                                steps[index].enabled ? '待运行' : '已跳过'
+                                (index === 0 || steps[index].enabled) ? '待运行' : '已跳过'
                               }
                               size="small"
                               color={
@@ -851,28 +905,12 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                       </Box>
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          步骤1: 扫描纸张
+                          步骤1: 图片识别
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          使用OCR技术识别纸质单据
+                          选择图片文件夹并使用OCR识别文本
                         </Typography>
                       </Box>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={steps[0].enabled}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              const newSteps = [...steps];
-                              newSteps[0].enabled = e.target.checked;
-                              setSteps(newSteps);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        }
-                        label="启用"
-                        onClick={(e) => e.stopPropagation()}
-                      />
                       <Chip
                         label={steps[0].status === 'idle' ? '待运行' :
                                steps[0].status === 'running' ? '运行中' :
@@ -886,33 +924,22 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                   </AccordionSummary>
                   <AccordionDetails>
                     <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
-                        <TextField
+                      <Grid item xs={12}>
+                        <Button
+                          variant="outlined"
+                          startIcon={<Upload />}
+                          onClick={handleSelectImageFolder}
                           fullWidth
-                          select
-                          label="扫描器类型"
-                          value={steps[0].config.scannerType}
-                          onChange={(e) => updateStepConfig(0, 'scannerType', e.target.value)}
-                          SelectProps={{ native: true }}
                         >
-                          <option value="flatbed">平板扫描仪</option>
-                          <option value="sheetfed">馈纸式扫描仪</option>
-                          <option value="portable">便携式扫描仪</option>
-                        </TextField>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          select
-                          label="分辨率 (DPI)"
-                          value={steps[0].config.resolution}
-                          onChange={(e) => updateStepConfig(0, 'resolution', e.target.value)}
-                          SelectProps={{ native: true }}
-                        >
-                          <option value="200">200 DPI</option>
-                          <option value="300">300 DPI</option>
-                          <option value="600">600 DPI</option>
-                        </TextField>
+                          选择图片文件夹
+                        </Button>
+                        {steps[0].config.imageFolderPath && (
+                          <Alert severity="info" sx={{ mt: 1 }}>
+                            <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                              已选择: {steps[0].config.imageFolderPath}
+                            </Typography>
+                          </Alert>
+                        )}
                       </Grid>
                       <Grid item xs={12} md={6}>
                         <TextField
@@ -929,20 +956,23 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                         </TextField>
                       </Grid>
                       <Grid item xs={12} md={6}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={steps[0].config.preprocessImage}
-                              onChange={(e) => updateStepConfig(0, 'preprocessImage', e.target.checked)}
-                            />
-                          }
-                          label="图像预处理"
-                        />
+                        <TextField
+                          fullWidth
+                          select
+                          label="识别语言"
+                          value={steps[0].config.language}
+                          onChange={(e) => updateStepConfig(0, 'language', e.target.value)}
+                          SelectProps={{ native: true }}
+                        >
+                          <option value="chi_sim+eng">中文+英文</option>
+                          <option value="chi_sim">简体中文</option>
+                          <option value="eng">英文</option>
+                        </TextField>
                       </Grid>
                     </Grid>
                     <Alert severity="info" sx={{ mt: 2 }}>
                       <Typography variant="body2">
-                        此步骤将扫描纸质单据并使用OCR技术提取文本信息，生成结构化的JSON数据。
+                        此步骤将读取指定文件夹中的图片，并使用OCR技术提取文本信息，生成结构化的JSON数据。
                       </Typography>
                     </Alert>
                   </AccordionDetails>
@@ -1199,77 +1229,9 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          select
-                          label="目标系统"
-                          value={steps[2].config.targetSystem}
-                          onChange={(e) => updateStepConfig(2, 'targetSystem', e.target.value)}
-                          SelectProps={{ native: true }}
-                        >
-                          <option value="erp">ERP系统</option>
-                          <option value="wms">WMS系统</option>
-                          <option value="sap">SAP系统</option>
-                        </TextField>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          fullWidth
-                          label="系统登录URL"
-                          value={steps[2].config.loginUrl}
-                          onChange={(e) => updateStepConfig(2, 'loginUrl', e.target.value)}
-                          placeholder="https://erp.company.com/login"
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={4}>
-                        <TextField
-                          fullWidth
-                          label="用户名"
-                          value={steps[2].config.username}
-                          onChange={(e) => updateStepConfig(2, 'username', e.target.value)}
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={4}>
-                        <TextField
-                          fullWidth
-                          select
-                          label="填报速度"
-                          value={steps[2].config.autoFillSpeed}
-                          onChange={(e) => updateStepConfig(2, 'autoFillSpeed', e.target.value)}
-                          SelectProps={{ native: true }}
-                        >
-                          <option value="slow">慢速 (稳定)</option>
-                          <option value="medium">中速 (推荐)</option>
-                          <option value="fast">快速 (实验)</option>
-                        </TextField>
-                      </Grid>
-                      <Grid item xs={12} md={4}>
-                        <TextField
-                          fullWidth
-                          type="number"
-                          label="重试次数"
-                          value={steps[2].config.retryAttempts}
-                          onChange={(e) => updateStepConfig(2, 'retryAttempts', parseInt(e.target.value))}
-                          inputProps={{ min: 1, max: 10 }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={steps[2].config.verification}
-                              onChange={(e) => updateStepConfig(2, 'verification', e.target.checked)}
-                            />
-                          }
-                          label="启用数据验证"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Alert severity="info" sx={{ mt: 2 }}>
+                    <Alert severity="info">
                       <Typography variant="body2">
-                        此步骤将通过自动化技术访问目标系统，自动填写表单并提交处理后的数据。
+                        此步骤将执行填报脚本，通过自动化技术访问目标系统，自动填写表单并提交处理后的数据。
                       </Typography>
                     </Alert>
                   </AccordionDetails>
