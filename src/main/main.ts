@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, shell, dialog } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import { ScriptExecutor } from './scriptExecutor';
@@ -202,5 +202,36 @@ ipcMain.handle('open-external', async (_event, url: string) => {
   } catch (error) {
     log.error('Failed to open external URL:', error);
     return { success: false, error: String(error) };
+  }
+});
+
+// 打开文件选择对话框
+ipcMain.handle('open-file-dialog', async (_event, options?: {
+  title?: string;
+  filters?: Array<{ name: string; extensions: string[] }>;
+}) => {
+  try {
+    const result = await dialog.showOpenDialog({
+      title: options?.title || '选择脚本文件',
+      filters: options?.filters || [
+        { name: 'Python Files', extensions: ['py'] },
+        { name: 'JavaScript Files', extensions: ['js'] },
+        { name: 'Java Files', extensions: ['java'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true };
+    }
+
+    return {
+      canceled: false,
+      filePath: result.filePaths[0]
+    };
+  } catch (error) {
+    log.error('Failed to open file dialog:', error);
+    return { canceled: true, error: String(error) };
   }
 });

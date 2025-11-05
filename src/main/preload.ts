@@ -30,6 +30,12 @@ const electronAPI = {
 
   // 打开外部链接
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+
+  // 打开文件选择对话框
+  openFileDialog: (options?: {
+    title?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+  }) => ipcRenderer.invoke('open-file-dialog', options),
 };
 
 // 将 API 暴露给渲染进程

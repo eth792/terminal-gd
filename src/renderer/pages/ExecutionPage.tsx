@@ -24,6 +24,8 @@ import {
   Stop,
   Pause,
   Refresh,
+  FolderOpen,
+  Code,
 } from '@mui/icons-material';
 import { ExecutionState, ExecutionStatus, LogMessage } from '../types';
 import LogViewer from '../components/LogViewer';
@@ -39,7 +41,9 @@ const ExecutionPage: React.FC = () => {
 
   const [scriptConfig, setScriptConfig] = useState({
     language: 'python',
+    mode: 'code', // 'code' 或 'file'
     code: '',
+    filePath: '',
     args: '',
   });
 
@@ -85,6 +89,42 @@ const ExecutionPage: React.FC = () => {
     }
   }, []);
 
+  // 选择文件
+  const handleSelectFile = async () => {
+    if (!window.electronAPI) {
+      addLog('WARNING', 'Electron API 不可用');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.openFileDialog({
+        title: '选择脚本文件',
+        filters: [
+          { name: 'Python Files', extensions: ['py'] },
+          { name: 'JavaScript Files', extensions: ['js'] },
+          { name: 'Java Files', extensions: ['java'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (!result.canceled && result.filePath) {
+        setScriptConfig(prev => ({ ...prev, filePath: result.filePath }));
+        addLog('INFO', `已选择文件: ${result.filePath}`);
+
+        // 根据文件扩展名自动设置语言
+        if (result.filePath.endsWith('.py')) {
+          setScriptConfig(prev => ({ ...prev, language: 'python' }));
+        } else if (result.filePath.endsWith('.js')) {
+          setScriptConfig(prev => ({ ...prev, language: 'nodejs' }));
+        } else if (result.filePath.endsWith('.java')) {
+          setScriptConfig(prev => ({ ...prev, language: 'java' }));
+        }
+      }
+    } catch (error) {
+      addLog('ERROR', `选择文件失败: ${error}`);
+    }
+  };
+
   // 执行脚本
   const handleExecute = async () => {
     setExecutionState(prev => ({ ...prev, status: 'running', progress: 0 }));
@@ -107,11 +147,19 @@ const ExecutionPage: React.FC = () => {
 
       // 调用 Electron API 执行脚本（实际实现）
       if (window.electronAPI) {
-        const result = await window.electronAPI.executeScript({
-          type: scriptConfig.language as any,
-          code: scriptConfig.code,
+        const executionData: any = {
+          type: scriptConfig.language,
           args: scriptConfig.args ? scriptConfig.args.split(' ') : [],
-        });
+        };
+
+        // 根据模式设置 code 或 filePath
+        if (scriptConfig.mode === 'file') {
+          executionData.filePath = scriptConfig.filePath;
+        } else {
+          executionData.code = scriptConfig.code;
+        }
+
+        const result = await window.electronAPI.executeScript(executionData);
 
         if (result.success) {
           addLog('SUCCESS', '脚本执行完成');
@@ -207,7 +255,7 @@ const ExecutionPage: React.FC = () => {
                 variant="contained"
                 startIcon={<PlayArrow />}
                 onClick={handleExecute}
-                disabled={!scriptConfig.code.trim()}
+                disabled={scriptConfig.mode === 'code' ? !scriptConfig.code.trim() : !scriptConfig.filePath.trim()}
               >
                 运行
               </Button>
@@ -253,6 +301,26 @@ const ExecutionPage: React.FC = () => {
                 脚本配置
               </Typography>
 
+              {/* 执行模式选择 */}
+              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                <Button
+                  variant={scriptConfig.mode === 'code' ? 'contained' : 'outlined'}
+                  startIcon={<Code />}
+                  onClick={() => setScriptConfig(prev => ({ ...prev, mode: 'code' }))}
+                  fullWidth
+                >
+                  代码模式
+                </Button>
+                <Button
+                  variant={scriptConfig.mode === 'file' ? 'contained' : 'outlined'}
+                  startIcon={<FolderOpen />}
+                  onClick={() => setScriptConfig(prev => ({ ...prev, mode: 'file' }))}
+                  fullWidth
+                >
+                  文件模式
+                </Button>
+              </Box>
+
               <FormControl fullWidth margin="normal">
                 <InputLabel>脚本语言</InputLabel>
                 <Select
@@ -266,18 +334,43 @@ const ExecutionPage: React.FC = () => {
                 </Select>
               </FormControl>
 
-              <TextField
-                fullWidth
-                multiline
-                rows={12}
-                label="脚本代码"
-                variant="outlined"
-                margin="normal"
-                value={scriptConfig.code}
-                onChange={(e) => setScriptConfig(prev => ({ ...prev, code: e.target.value }))}
-                placeholder={`请输入${scriptConfig.language}代码...`}
-                sx={{ fontFamily: 'monospace' }}
-              />
+              {/* 代码模式 */}
+              {scriptConfig.mode === 'code' && (
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={12}
+                  label="脚本代码"
+                  variant="outlined"
+                  margin="normal"
+                  value={scriptConfig.code}
+                  onChange={(e) => setScriptConfig(prev => ({ ...prev, code: e.target.value }))}
+                  placeholder={`请输入${scriptConfig.language}代码...`}
+                  sx={{ fontFamily: 'monospace' }}
+                />
+              )}
+
+              {/* 文件模式 */}
+              {scriptConfig.mode === 'file' && (
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FolderOpen />}
+                    onClick={handleSelectFile}
+                    fullWidth
+                    sx={{ mb: 2 }}
+                  >
+                    选择脚本文件
+                  </Button>
+                  {scriptConfig.filePath && (
+                    <Alert severity="info">
+                      <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                        已选择文件: {scriptConfig.filePath}
+                      </Typography>
+                    </Alert>
+                  )}
+                </Box>
+              )}
 
               <TextField
                 fullWidth

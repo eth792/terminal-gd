@@ -7,7 +7,8 @@ export interface User {
 // 脚本执行相关类型
 export interface ScriptExecutionData {
   type: 'python' | 'java' | 'nodejs';
-  code: string;
+  code?: string; // 内联代码（可选）
+  filePath?: string; // 脚本文件路径（可选）
   args?: string[];
   workingDirectory?: string;
 }
@@ -88,6 +89,12 @@ export interface ElectronAPI {
 
   // 打开外部链接
   openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+
+  // 打开文件选择对话框
+  openFileDialog: (options?: {
+    title?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+  }) => Promise<{ canceled: boolean; filePath?: string }>;
 }
 
 // 扩展Window接口

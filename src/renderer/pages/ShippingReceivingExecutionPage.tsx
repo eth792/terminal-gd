@@ -77,7 +77,9 @@ const ShippingReceivingExecutionPage: React.FC = () => {
       status: 'idle',
       config: {
         scriptType: 'python',
-        scriptPath: 'scripts/data_processor.py',
+        scriptMode: 'code', // 'code' 或 'file'
+        scriptPath: '',
+        scriptCode: '',
         validationRules: true,
         dataMapping: true,
         outputFormat: 'structured',
@@ -100,6 +102,42 @@ const ShippingReceivingExecutionPage: React.FC = () => {
   ]);
 
   const stepLabels = ['扫描纸张', '数据清理', '执行填报'];
+
+  // 选择文件
+  const handleSelectFile = async (stepIndex: number) => {
+    if (!window.electronAPI) {
+      addLog('WARNING', 'Electron API 不可用');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.openFileDialog({
+        title: '选择脚本文件',
+        filters: [
+          { name: 'Python Files', extensions: ['py'] },
+          { name: 'JavaScript Files', extensions: ['js'] },
+          { name: 'Java Files', extensions: ['java'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      });
+
+      if (!result.canceled && result.filePath) {
+        updateStepConfig(stepIndex, 'scriptPath', result.filePath);
+        addLog('INFO', `[${stepLabels[stepIndex]}] 已选择文件: ${result.filePath}`);
+
+        // 根据文件扩展名自动设置语言
+        if (result.filePath.endsWith('.py')) {
+          updateStepConfig(stepIndex, 'scriptType', 'python');
+        } else if (result.filePath.endsWith('.js')) {
+          updateStepConfig(stepIndex, 'scriptType', 'nodejs');
+        } else if (result.filePath.endsWith('.java')) {
+          updateStepConfig(stepIndex, 'scriptType', 'java');
+        }
+      }
+    } catch (error) {
+      addLog('ERROR', `[${stepLabels[stepIndex]}] 选择文件失败: ${error}`);
+    }
+  };
 
   // 添加日志消息
   const addLog = (level: LogMessage['level'], message: string, step?: number) => {
@@ -357,9 +395,9 @@ print(json.dumps(ocr_result, ensure_ascii=False, indent=2))
     addLog('SUCCESS', `✅ 数据处理完成，处理了 ${processedData.items.length} 个物料条目`, 1);
     addLog('INFO', `处理后数据: ${JSON.stringify(processedData, null, 2)}`, 1);
 
-    // 实际的数据处理脚本示例
+    // 实际的数据处理脚本执行
     if (window.electronAPI) {
-      const scriptCode = `import json
+      const defaultScriptCode = `import json
 
 # 模拟原始OCR数据
 raw_data = {
@@ -398,11 +436,19 @@ print(json.dumps(processed_data, ensure_ascii=False, indent=2))
 `;
 
       try {
-        const result = await window.electronAPI.executeScript({
+        const executionData: any = {
           type: config.scriptType,
-          code: scriptCode,
           args: config.customParams ? config.customParams.split(' ') : []
-        });
+        };
+
+        // 根据模式设置 code 或 filePath
+        if (config.scriptMode === 'file' && config.scriptPath) {
+          executionData.filePath = config.scriptPath;
+        } else {
+          executionData.code = config.scriptCode || defaultScriptCode;
+        }
+
+        const result = await window.electronAPI.executeScript(executionData);
 
         if (result.success) {
           addLog('SUCCESS', '数据处理脚本执行成功', 1);
@@ -997,15 +1043,38 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                           <option value="java">Java</option>
                         </TextField>
                       </Grid>
-                      <Grid item xs={12}>
+                      <Grid item xs={12} md={6}>
                         <TextField
                           fullWidth
-                          label="脚本路径"
-                          value={steps[1].config.scriptPath}
-                          onChange={(e) => updateStepConfig(1, 'scriptPath', e.target.value)}
-                          placeholder="scripts/data_processor.py"
-                        />
+                          select
+                          label="执行模式"
+                          value={steps[1].config.scriptMode}
+                          onChange={(e) => updateStepConfig(1, 'scriptMode', e.target.value)}
+                          SelectProps={{ native: true }}
+                        >
+                          <option value="code">使用内置代码</option>
+                          <option value="file">选择脚本文件</option>
+                        </TextField>
                       </Grid>
+                      {steps[1].config.scriptMode === 'file' && (
+                        <Grid item xs={12}>
+                          <Button
+                            variant="outlined"
+                            startIcon={<Upload />}
+                            onClick={() => handleSelectFile(1)}
+                            fullWidth
+                          >
+                            选择脚本文件
+                          </Button>
+                          {steps[1].config.scriptPath && (
+                            <Alert severity="info" sx={{ mt: 1 }}>
+                              <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                                已选择: {steps[1].config.scriptPath}
+                              </Typography>
+                            </Alert>
+                          )}
+                        </Grid>
+                      )}
                       <Grid item xs={12} md={6}>
                         <FormControlLabel
                           control={
@@ -1043,6 +1112,8 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                     <Alert severity="info" sx={{ mt: 2 }}>
                       <Typography variant="body2">
                         此步骤将调用数据处理脚本，对OCR提取的JSON数据进行清理、验证和结构化处理。
+                        {steps[1].config.scriptMode === 'code' && '（使用内置示例代码）'}
+                        {steps[1].config.scriptMode === 'file' && '（使用自定义脚本文件）'}
                       </Typography>
                     </Alert>
                   </AccordionDetails>

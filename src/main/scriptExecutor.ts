@@ -6,7 +6,8 @@ import { BrowserWindow } from 'electron';
 
 export interface ScriptExecutionData {
   type: 'python' | 'java' | 'nodejs';
-  code: string;
+  code?: string; // 内联代码（可选）
+  filePath?: string; // 脚本文件路径（可选）
   args?: string[];
   workingDirectory?: string;
 }
@@ -30,6 +31,15 @@ export class ScriptExecutor {
     const startTime = Date.now();
 
     try {
+      // 验证输入：必须提供 code 或 filePath 之一
+      if (!data.code && !data.filePath) {
+        return {
+          success: false,
+          error: '必须提供脚本代码或文件路径',
+          executionTime: Date.now() - startTime,
+        };
+      }
+
       // 检查运行环境
       const envCheck = await this.checkEnvironment(data.type);
       if (!envCheck.available) {
@@ -42,15 +52,35 @@ export class ScriptExecutor {
 
       this.sendLog('INFO', `开始执行 ${data.type} 脚本`);
 
-      // 创建临时文件
-      const tempFile = await this.createTempFile(data.type, data.code);
-      this.sendLog('INFO', `临时文件创建: ${tempFile}`);
+      let scriptPath: string;
+      let needsCleanup = false;
+
+      // 判断是使用文件路径还是内联代码
+      if (data.filePath) {
+        // 使用文件路径
+        if (!fs.existsSync(data.filePath)) {
+          return {
+            success: false,
+            error: `文件不存在: ${data.filePath}`,
+            executionTime: Date.now() - startTime,
+          };
+        }
+        scriptPath = data.filePath;
+        this.sendLog('INFO', `使用脚本文件: ${scriptPath}`);
+      } else {
+        // 使用内联代码，创建临时文件
+        scriptPath = await this.createTempFile(data.type, data.code!);
+        needsCleanup = true;
+        this.sendLog('INFO', `临时文件创建: ${scriptPath}`);
+      }
 
       // 执行脚本
-      const result = await this.runScript(data.type, tempFile, data.args || []);
+      const result = await this.runScript(data.type, scriptPath, data.args || []);
 
-      // 清理临时文件
-      this.cleanupTempFile(tempFile);
+      // 清理临时文件（仅当使用内联代码时）
+      if (needsCleanup) {
+        this.cleanupTempFile(scriptPath);
+      }
 
       return {
         ...result,
