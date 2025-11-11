@@ -33,6 +33,12 @@ export { recallByTokens, recallByBothFields, lookupRows } from './match/recall.j
 export { scoreCandidates, rankCandidates, scoreAndRank, type ScoredCandidate } from './match/rank.js';
 export { fastExactMatch, anchorMatch, recallAndRank, match, type MatchMode, type MatchResult } from './match/strategies.js';
 
+// 分桶模块 (Task 6)
+export { bucketize, DEFAULT_BUCKET_CONFIG, type BucketConfig } from './bucket/bucketize.js';
+export { FailReason, type BucketType, type BucketResult } from './bucket/reasons.js';
+
+// 主流程 (Task 6)
+export { matchOcrFile, matchOcrBatch, type MatchOcrResult } from './match.js';
+
 // 将在后续 Task 中导出具体模块
-// export * from './bucket';
 // export * from './report';
