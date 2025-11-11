@@ -13,3 +13,10 @@ data/**
 .venv/
 **/.venv/
 **/__pycache__/
+
+# 运行输出（不提交）
+runs/**
+!runs/.keep
+
+# 测试配置（不提交）
+configs/v0.test/

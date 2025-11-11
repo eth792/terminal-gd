@@ -8,22 +8,30 @@
   "exports": {
     ".": "./dist/index.js"
   },
+  "bin": {
+    "ocr-core": "./dist/cli/match-ocr.js",
+    "ocr-build-index": "./dist/cli/build-index.js",
+    "ocr-eval": "./dist/cli/eval-sidecar.js"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
-    "dev": "node --enable-source-maps dist/cli/match-ocr.js",
-    "ocr-core": "node --enable-source-maps dist/cli/match-ocr.js"
+    "build": "tsup src/index.ts src/cli/build-index.ts src/cli/match-ocr.ts src/cli/eval-sidecar.ts --format esm --dts --sourcemap --clean",
+    "dev": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js",
+    "build-index": "node --enable-source-maps dist/cli/build-index.js",
+    "match-ocr": "node --enable-source-maps dist/cli/match-ocr.js",
+    "eval": "node --enable-source-maps dist/cli/eval-sidecar.js"
   },
   "dependencies": {
-    "zod": "^3.23.8",
-    "yargs": "^17.7.2",
+    "csv-stringify": "^6.5.2",
+    "dayjs": "^1.11.13",
     "fastest-levenshtein": "^1.0.16",
     "iconv-lite": "^0.6.3",
-    "csv-stringify": "^6.5.2",
-    "dayjs": "^1.11.13"
+    "yargs": "^17.7.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@types/node": "^20.12.12",
+    "@types/yargs": "^17.0.34",
     "tsup": "^8.1.0",
-    "@types/node": "^20.12.12"
+    "typescript": "^5.6.3"
   }
 }

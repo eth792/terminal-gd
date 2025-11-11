@@ -13,6 +13,13 @@
 
 ```
 .
+├─ data/
+│  ├─ db/             # ← 生产/开发读取的 Excel/CSV 数据源（不提交）
+│  ├─ ocr_txt/        # ← 本地OCR文本（调试用，可不提交）
+│  └─ images/         # ← 图片ocr输入源
+├─ .cache/
+│  └─ ocr-core/
+│     └─ indexes/     # ← DB索引缓存（不提交）
 ├── apps/
 │   └── electron-app/
 │       ├── CLAUDE.MD
