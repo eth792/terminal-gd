@@ -1,151 +1,133 @@
-# 电力物资合同履约智能化管理
+# ocr-match-record
 
-一款基于 Electron 的跨平台桌面应用程序，支持多种业务流程自动化场景。
+> Monorepo for OCR → field extraction → DB fuzzy matching, with a desktop runner (Electron) and future shared core/config tooling.
 
-## 功能特性
+---
 
-- **登录认证**: 安全的用户登录系统
-- **多功能模块**: 支持收发货管理、自动填报、表格数据提取
-- **多语言执行**: 支持 Python、Java、Node.js 脚本执行
-- **实时日志**: 完整的日志记录和实时显示
-- **跨平台**: 支持 macOS 和 Windows
+## Why this repo exists (first principles)
 
-## 技术栈
+**Problem**: OCR text is noisy and the DB is large/heterogeneous. We must reliably map two key fields — *supplier* and *project* — from raw `.txt` to the correct DB row, at scale.
 
-- **框架**: Electron
-- **前端**: React + TypeScript + Material UI
-- **后端**: Node.js
-- **构建工具**: Vite
-- **代码质量**: ESLint + TypeScript
+**Constraints**:
+- OCR output is unstable (line breaks, near-characters, missing glyphs).
+- DB columns/aliases vary by file; names are not fixed.
+- Review cost must be minimized and traceable.
 
-## 快速开始
+**Invariants** (design decisions that keep the system reliable):
+1. **Two projects, one truth**: desktop runner (Electron) for production runs; trainer for config generation; both depend on a **shared core** (algorithms, thresholds, report schema).
+2. **Configuration is versioned**: learned alias/normalize/domain rules live under `configs/v*/<sha>`; a pointer `configs/latest.json` selects the active set.
+3. **One run = one bundle**: every execution writes a self-contained folder under `runs/` with `manifest.json`, `summary.md`, `results.csv` (single source of truth), optional `review.html`.
+4. **No surprise IO in apps**: apps focus on wiring/UX; scoring/thresholds/buckets/report columns are defined once in the shared core (to be added in `packages/`).
+5. **Deterministic tooling**: Node ≥ 18, pnpm workspaces, explicit scripts from the repo root.
+
+For an overview of folders and files, see **PROJECT_STRUCTURE.md** at the repo root.
+
+---
+
+## Repo layout (short)
+- **apps/electron-app** – Desktop runner: images → OCR HTTP → `.txt` → match → write a run bundle to `runs/`.
+- **packages/** – Shared libraries (future `@ocr/core` with normalize/extract/match/bucketize/report-schema).
+- **configs/** – Versioned matching configs, plus `latest.json` pointer.
+- **runs/** – One bundle per execution (human & machine friendly).
+- **examples/**, **sandbox/** – Samples & experiments. **Not built** by CI or root scripts.
+
+> Full detail: `PROJECT_STRUCTURE.md`
+
+---
+
+## Prerequisites
+- Node **>= 18**
+- pnpm **(use a concrete version)**. If needed:
+  ```bash
+  corepack enable
+  corepack prepare pnpm@9.12.2 --activate
+  ```
+
+---
+
+## Install, Dev, Build (root commands)
 
 ```bash
-# 1. 克隆项目
-git clone <repository-url>
-cd terminal-gd
-
-# 2. 检查开发环境
-pnpm setup
-
-# 3. 安装依赖
+# install
 pnpm install
 
-# 4. 启动开发服务器
+# dev: runs the Electron app's dev script
 pnpm dev
-```
 
-## 开发指南
-
-### 环境要求
-
-- Node.js 16+
-- pnpm 8+ (推荐使用 pnpm 作为包管理器)
-- Python 3.x (可选，用于 Python 脚本执行)
-- Java 8+ (可选，用于 Java 脚本执行)
-
-### 安装 pnpm
-
-```bash
-# 使用 npm 安装 pnpm
-npm install -g pnpm
-
-# 或者使用 Homebrew (macOS)
-brew install pnpm
-
-# 或者使用 winget (Windows)
-winget install pnpm
-```
-
-### 安装依赖
-
-```bash
-pnpm install
-```
-
-### 开发模式
-
-```bash
-pnpm dev
-```
-
-这将启动:
-- Vite 开发服务器 (端口 3000)
-- Electron 主进程
-- 热重载功能
-
-### 构建项目
-
-```bash
-# 构建渲染进程和主进程
+# build: builds the Electron app
 pnpm build
-
-# 打包应用
-pnpm electron:pack
-
-# 启动已构建的应用（生产模式）
-pnpm electron:start
-
-# 清理构建缓存
-pnpm clean
 ```
 
-### 代码检查
+> The root scripts intentionally target **apps/electron-app** only. If you rename/move the app, update the filters in root `package.json` (see `PROJECT_STRUCTURE.md`).
 
-```bash
-# 运行 ESLint
-pnpm lint
+---
 
-# 运行 TypeScript 检查
-pnpm type-check
+## Run output (the run bundle)
+
+Every run produces a folder like `runs/run_YYYYmmdd_HHMMSS__prod/` containing:
+- `manifest.json` – inputs/params/stats/versions/fingerprints
+- `summary.md` – one-page human summary
+- `results.csv` – **single source of truth** (Top1 + field scores + bucket + reason)
+- `results_top3.csv` *(optional)* – Top 3 candidates
+- `review.html` + `review.json` *(optional)* – single-page reviewer (table on the left, image+txt on the right)
+
+Minimal columns expected in `results.csv`:
+```
+file_name, q_supplier, q_project,
+cand_f1, cand_f2, source_file, row_index,
+s_field1, s_field2, score, bucket, reason,
+source_txt, source_image, viewer_link,
+run_id, config_version, config_sha, db_digest
 ```
 
-### 运行测试
+---
 
-```bash
-pnpm test
-```
+## Configuration management
 
-### pnpm 优势
+- Versioned under `configs/vX.Y.Z/<sha>/...` (e.g., `label_alias.json`, `normalize.user.json`, `domain.json`).
+- The active configuration is selected via `configs/latest.json`:
+  ```json
+  { "path": "configs/v1.1.0/a1b2c3", "version": "1.1.0", "sha": "a1b2c3" }
+  ```
+- Each run records the **exact config version/sha** in its `manifest.json` and `results.csv`.
 
-- **更快的安装速度**: 使用硬链接和符号链接减少磁盘占用
-- **更严格的依赖管理**: 避免幽灵依赖问题
-- **更好的 monorepo 支持**: 原生支持工作区
-- **磁盘空间高效**: 全局存储，避免重复安装
+---
 
-## 项目结构
+## Build scope (what *not* to build)
 
-```
-src/
-├── main/                 # 主进程代码
-│   ├── main.ts          # Electron 主进程入口
-│   ├── preload.ts       # 预加载脚本
-│   └── scriptExecutor.ts # 脚本执行器
-├── renderer/            # 渲染进程代码
-│   ├── components/      # React 组件
-│   ├── pages/          # 页面组件
-│   ├── types/          # 类型定义
-│   ├── utils/          # 工具函数
-│   ├── App.tsx         # 应用主组件
-│   └── main.tsx        # 渲染进程入口
-└── test/               # 测试文件
-```
+Root scripts and CI should **only** build packages under `apps/*` and `packages/*`.
+`examples/` and `sandbox/` are **not** part of the build/publish surface.
 
-## 使用指南
+> Example CI/root build command:
+> ```bash
+> pnpm -r --filter ./apps/* --filter ./packages/* run build
+> ```
 
-1. **登录**: 使用默认账户 admin/admin
-2. **选择功能**: 在主页面选择需要的自动化功能
-3. **配置脚本**: 在执行页面配置和编写脚本
-4. **运行监控**: 实时查看执行进度和日志
+---
 
-## 贡献指南
+## Troubleshooting
 
-1. Fork 本项目
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
+- **Filter didn’t match** (`No projects matched the filters`)  
+  Use a **path filter** to avoid package name confusion:
+  ```json
+  { "scripts": { "dev": "pnpm -F ./apps/electron-app dev", "build": "pnpm -F ./apps/electron-app build" } }
+  ```
 
-## 许可证
+- **Invalid packageManager semver**  
+  Ensure the root `package.json` uses a full version, e.g. `"packageManager": "pnpm@9.12.2"`.
 
-本项目基于 MIT 许可证开源。详见 LICENSE 文件。
+- **Mixed lockfiles**  
+  If migrating from npm/yarn, remove sub-package `package-lock.json`/`yarn.lock`. Only `pnpm-lock.yaml` should exist at the root.
+
+---
+
+## Next
+
+- Add `packages/ocr-match-core` and migrate normalize/extract/match/bucketize/report schema into one library.
+- Add `apps/trainer-cli` to produce versioned configs and update `configs/latest.json`.
+- Generate `review.html` within each run bundle to enable one-click source tracing and side-by-side review.
+
+---
+
+## License
+Internal project. Fill in your preferred license if needed.
