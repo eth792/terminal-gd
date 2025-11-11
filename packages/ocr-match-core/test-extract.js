@@ -12,16 +12,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = resolve(__dirname, '../..');
 
-// 选择5个有sidecar的样本进行测试
+// 使用全部19个有sidecar的样本进行完整测试
 const testSamples = [
-  'baoshengkejichuangxingufenyouxiangongsi4100931561',
-  'jiangsuzhongtiankejigufenyouxiangongsi4100912927',
-  'wuhandierdianxiandianlan4100789351',
-  'beijingheruisaierdianlikejigufen4100908541',
+  'aibobaiyun4100962241',
   'andelijituanyouxiangongsi4100968520',
+  'andelijituanyouxiangongsi4100968541',
+  'baodingshiwuxingdianqi4100967040',
+  'baodingshiwuxingdianqiyouxiangongsi4100968568',
+  'baohuixianlan4100908540',
+  'baohuixianlanjituan4100965990',
+  'baoshengkejichuangxingufenyouxiangongsi4100912930',
+  'baoshengkejichuangxingufenyouxiangongsi4100931553',
+  'baoshengkejichuangxingufenyouxiangongsi4100931561',
+  'baoshengkejichuangxingufenyouxiangongsi4100931841',
+  'baoshengkejichuangxingufenyouxiangongsi4100954930',
+  'baoshengkejichuangxingufenyouxiangongsi4100962417',
+  'baoshengkejichuangxingufenyouxiangongsi4100965595',
+  'baoshengkejichuangxingufenyouxiangongsi4100965901',
+  'beijingheruisaierdianlikejigufen4100880820',
+  'beijingheruisaierdianlikejigufen4100880903',
+  'beijingheruisaierdianlikejigufen4100904491',
+  'beijingheruisaierdianlikejigufen4100908541',
 ];
 
-console.log('【Phase 1 验收测试】提取准确率测试\n');
+console.log('【Phase 1 完整验收测试】提取准确率测试（全部19个样本）\n');
 console.log(`样本数量: ${testSamples.length}\n`);
 
 try {

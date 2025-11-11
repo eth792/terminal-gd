@@ -10,3 +10,6 @@ pnpm-lock.yaml
 data/**
 !.keep
 .cache/**
+.venv/
+**/.venv/
+**/__pycache__/

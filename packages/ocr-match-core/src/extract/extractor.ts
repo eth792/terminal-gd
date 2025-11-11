@@ -91,18 +91,30 @@ function extractField(lines: string[], linesRaw: string[], labels: string[], noi
         (i > 0 && !/公司|有限|集团/.test(value) && /公司|有限|集团|工程|项目|线路|站|小区|改造/.test(linesRaw[i - 1])); // 策略3
 
       if (needLookupPrev && i > 0) {
-        const prevLineRaw = linesRaw[i - 1];
-        const prevLine = prevLineRaw.trim();
+        let prevLineRaw = linesRaw[i - 1];
+        let prevLine = prevLineRaw.trim();
+        let lookupIndex = i - 1;
+
+        // 特殊情况：如果标签后值完全为空，且上一行包含标签，跳过上一行继续向上查找
+        if (value.length === 0 && labels.some(l => prevLine.includes(l)) && i > 1) {
+          lookupIndex = i - 2;
+          prevLineRaw = linesRaw[lookupIndex];
+          prevLine = prevLineRaw.trim();
+        }
 
         // 向上查找条件：
         // 1. 上一行不为空
         // 2. 上一行不包含其他标签
-        // 3. 上一行以典型的实体结尾词结尾（或包含这些词）
+        // 3. 满足以下任一条件：
+        //    a) 包含典型的实体词
+        //    b) 有深度缩进（>= 60）且不以分隔符开头
         const hasOtherLabel = labels.some(l => prevLine.includes(l));
         const hasEntity = /公司|有限|集团|工程|项目|线路|站|小区|改造/.test(prevLine);
+        const prevLineIndent = prevLineRaw.length - prevLineRaw.trimStart().length;
+        const isDeepIndentValue = prevLineIndent >= 60 && !/^[:：、，。；]/.test(prevLine);
 
-        if (prevLine && !hasOtherLabel && hasEntity) {
-          // 拼接上一行 + 当前行的值（上一行在前）
+        if (prevLine && !hasOtherLabel && (hasEntity || isDeepIndentValue)) {
+          // 拼接找到的行 + 当前行的值
           value = prevLine + (value ? ' ' + value : '');
         }
       }
