@@ -27,7 +27,12 @@ export { logger } from './util/log.js';
 export { buildIndex, tokenize, computeDigest, buildInvertedIndex } from './indexer/builder.js';
 export type { InvertedIndex, DbRow } from './indexer/types.js';
 
+// 匹配模块 (Task 5)
+export { levenshteinSimilarity, jaccardSimilarity, fieldSimilarity, hybridScore, singleFieldScore } from './match/similarity.js';
+export { recallByTokens, recallByBothFields, lookupRows } from './match/recall.js';
+export { scoreCandidates, rankCandidates, scoreAndRank, type ScoredCandidate } from './match/rank.js';
+export { fastExactMatch, anchorMatch, recallAndRank, match, type MatchMode, type MatchResult } from './match/strategies.js';
+
 // 将在后续 Task 中导出具体模块
-// export * from './match';
 // export * from './bucket';
 // export * from './report';
