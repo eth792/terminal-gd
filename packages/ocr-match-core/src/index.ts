@@ -23,6 +23,10 @@ export type { ExtractResult, ExtractConfig } from './extract/extractor.js';
 // 工具模块
 export { logger } from './util/log.js';
 
+// 索引模块 (Task 4)
+export { buildIndex, tokenize, computeDigest, buildInvertedIndex } from './indexer/builder.js';
+export type { InvertedIndex, DbRow } from './indexer/types.js';
+
 // 将在后续 Task 中导出具体模块
 // export * from './match';
 // export * from './bucket';
