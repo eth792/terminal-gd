@@ -31,17 +31,17 @@
       "replace": ""
     },
     {
-      "pattern": "[“”\"『』「」]",
+      "pattern": "[\"\"\"『』「」]",
       "flags": "g",
       "replace": ""
     },
     {
-      "pattern": "（",
+      "pattern": "[（〈《＜]",
       "flags": "g",
       "replace": "("
     },
     {
-      "pattern": "）",
+      "pattern": "[）〉》＞]",
       "flags": "g",
       "replace": ")"
     },

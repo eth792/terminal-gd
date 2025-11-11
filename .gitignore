@@ -6,3 +6,7 @@ pnpm-lock.yaml
 
 **/__pycache__/
 **/*.pyc
+
+data/**
+!.keep
+.cache/**
