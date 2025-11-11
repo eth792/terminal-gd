@@ -1,0 +1,56 @@
+{
+  "replacements": [
+    {
+      "pattern": "項日",
+      "flags": "g",
+      "replace": "项目"
+    },
+    {
+      "pattern": "項目",
+      "flags": "g",
+      "replace": "项目"
+    },
+    {
+      "pattern": "[○〇O]",
+      "flags": "g",
+      "replace": "0"
+    },
+    {
+      "pattern": "[丨lI]",
+      "flags": "g",
+      "replace": "1"
+    },
+    {
+      "pattern": "[，,、.．·]",
+      "flags": "g",
+      "replace": "、"
+    },
+    {
+      "pattern": "\\s+",
+      "flags": "g",
+      "replace": ""
+    },
+    {
+      "pattern": "[“”\"『』「」]",
+      "flags": "g",
+      "replace": ""
+    },
+    {
+      "pattern": "（",
+      "flags": "g",
+      "replace": "("
+    },
+    {
+      "pattern": "）",
+      "flags": "g",
+      "replace": ")"
+    },
+    {
+      "pattern": "　",
+      "flags": "g",
+      "replace": ""
+    }
+  ],
+  "maps": {},
+  "strip": []
+}
