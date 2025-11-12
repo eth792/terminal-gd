@@ -80,27 +80,63 @@ const ExpenseReimbursementExecutionPage: React.FC = () => {
     }
 
     try {
-      const result = await window.electronAPI.openFileDialog({
-        title: '选择脚本文件',
-        filters: [
+      // 根据当前选择的语言类型，显示不同的文件过滤器
+      let filters: Array<{ name: string; extensions: string[] }> = [];
+      let title = '选择脚本文件';
+
+      if (scriptConfig.language === 'python') {
+        title = '选择 Python 脚本文件';
+        filters = [
+          { name: 'Python Files', extensions: ['py'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+      } else if (scriptConfig.language === 'nodejs') {
+        title = '选择 JavaScript 脚本文件';
+        filters = [
+          { name: 'JavaScript Files', extensions: ['js'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+      } else if (scriptConfig.language === 'java') {
+        title = '选择 Java 执行文件（.class 或 .jar）';
+        filters = [
+          { name: 'Java Executable Files', extensions: ['jar', 'class'] },
+          { name: 'JAR Files', extensions: ['jar'] },
+          { name: 'Class Files', extensions: ['class'] },
+          { name: 'All Files', extensions: ['*'] },
+        ];
+      } else {
+        // 默认显示所有类型
+        filters = [
           { name: 'Python Files', extensions: ['py'] },
           { name: 'JavaScript Files', extensions: ['js'] },
-          { name: 'Java Files', extensions: ['java'] },
+          { name: 'Java Files', extensions: ['jar', 'class'] },
           { name: 'All Files', extensions: ['*'] },
-        ],
+        ];
+      }
+
+      const result = await window.electronAPI.openFileDialog({
+        title: title,
+        filters: filters,
       });
 
       if (!result.canceled && result.filePath) {
         setScriptConfig(prev => ({ ...prev, filePath: result.filePath ?? '' }));
         addLog('INFO', `已选择文件: ${result.filePath}`);
 
-        // 根据文件扩展名自动设置语言
+        // 根据文件扩展名自动设置语言（如果用户选择了其他类型的文件）
         if (result.filePath.endsWith('.py')) {
           setScriptConfig(prev => ({ ...prev, language: 'python' }));
+          addLog('INFO', '自动识别为 Python 脚本');
         } else if (result.filePath.endsWith('.js')) {
           setScriptConfig(prev => ({ ...prev, language: 'nodejs' }));
-        } else if (result.filePath.endsWith('.java')) {
+          addLog('INFO', '自动识别为 Node.js 脚本');
+        } else if (result.filePath.endsWith('.jar') || result.filePath.endsWith('.class')) {
           setScriptConfig(prev => ({ ...prev, language: 'java' }));
+          if (result.filePath.endsWith('.jar')) {
+            addLog('INFO', '自动识别为 Java JAR 文件');
+          } else {
+            addLog('INFO', '自动识别为 Java Class 文件');
+          }
         }
       }
     } catch (error) {
@@ -318,12 +354,26 @@ const ExpenseReimbursementExecutionPage: React.FC = () => {
                   fullWidth
                   sx={{ mb: 2 }}
                 >
-                  选择脚本文件
+                  {scriptConfig.language === 'java'
+                    ? '选择 Java 执行文件（.jar/.class）'
+                    : scriptConfig.language === 'python'
+                    ? '选择 Python 脚本（.py）'
+                    : '选择 JavaScript 脚本（.js）'}
                 </Button>
                 {scriptConfig.filePath && (
                   <Alert severity="info">
                     <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
                       已选择文件: {scriptConfig.filePath}
+                    </Typography>
+                  </Alert>
+                )}
+                {scriptConfig.language === 'java' && !scriptConfig.filePath && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    <Typography variant="body2">
+                      <strong>提示：</strong>Java 程序需要选择编译后的文件：
+                      <br />• <strong>.jar</strong> 文件（推荐）：打包后的可执行 JAR 文件
+                      <br />• <strong>.class</strong> 文件：编译后的字节码文件
+                      <br />不支持直接运行 .java 源代码文件
                     </Typography>
                   </Alert>
                 )}
