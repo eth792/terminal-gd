@@ -25,6 +25,7 @@
     "dayjs": "^1.11.13",
     "fastest-levenshtein": "^1.0.16",
     "iconv-lite": "^0.6.3",
+    "xlsx": "^0.18.5",
     "yargs": "^17.7.2",
     "zod": "^3.23.8"
   },

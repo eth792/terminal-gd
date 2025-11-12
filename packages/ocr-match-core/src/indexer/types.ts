@@ -22,9 +22,11 @@ export interface DbRow {
 export interface InvertedIndex {
   /** 版本号 */
   version: '1.0';
-  /** DB文件路径 */
+  /** DB文件路径（文件或目录） */
   db_path: string;
-  /** DB文件SHA-256摘要 */
+  /** 实际读取的所有DB文件列表 */
+  db_files: string[];
+  /** DB文件SHA-256摘要（多文件时为联合digest） */
   digest: string;
   /** 总行数 */
   total_rows: number;

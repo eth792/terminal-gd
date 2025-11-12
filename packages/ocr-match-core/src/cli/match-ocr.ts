@@ -13,8 +13,9 @@ import { matchOcrBatch } from '../match.js';
 import { DEFAULT_BUCKET_CONFIG } from '../bucket/bucketize.js';
 import { writeRunBundle, JsonlLogger } from '../report/writer.js';
 import type { InvertedIndex } from '../indexer/types.js';
-import { computeDigest } from '../indexer/builder.js';
+import { computeDigest, computeMultiFileDigest, scanDbDirectory } from '../indexer/builder.js';
 import { logger } from '../util/log.js';
+import fs_sync from 'fs';
 
 interface MatchOcrArgs {
   ocr: string;              // OCR 文本目录
@@ -164,7 +165,12 @@ async function main() {
     // 2.1. Digest 校验（严格模式）
     if (args.db && !args.allowStaleIndex) {
       logger.info('cli.match-ocr', `Verifying index digest against DB: ${args.db}`);
-      const currentDigest = computeDigest(args.db);
+
+      // 检测是文件还是目录
+      const stat = fs_sync.statSync(args.db);
+      const currentDigest = stat.isDirectory()
+        ? computeMultiFileDigest(scanDbDirectory(args.db))
+        : computeDigest(args.db);
 
       if (index.digest !== currentDigest) {
         logger.error(
