@@ -37,8 +37,8 @@ const ExpenseReimbursementExecutionPage: React.FC = () => {
   });
 
   const [scriptConfig, setScriptConfig] = useState({
-    language: 'python',
-    filePath: 'test_scripts/hello.py', // 默认文件路径
+    language: 'java',
+    filePath: '', // 默认文件路径
     args: '',
     username: '',
     password: '',

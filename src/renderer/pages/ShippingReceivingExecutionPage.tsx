@@ -92,6 +92,8 @@ const ShippingReceivingExecutionPage: React.FC = () => {
         verification: true,
         retryAttempts: 3,
         waitTime: 2000,
+        scriptPath: '', // 填报脚本路径
+        scriptType: 'python', // 固定为 python
       }
     }
   ]);
@@ -128,27 +130,39 @@ const ShippingReceivingExecutionPage: React.FC = () => {
     }
 
     try {
+      // 步骤3（填报脚本）只支持 Python
+      const filters = stepIndex === 2
+        ? [
+            { name: 'Python Files', extensions: ['py'] },
+            { name: 'All Files', extensions: ['*'] },
+          ]
+        : [
+            { name: 'Python Files', extensions: ['py'] },
+            { name: 'JavaScript Files', extensions: ['js'] },
+            { name: 'Java Files', extensions: ['java'] },
+            { name: 'All Files', extensions: ['*'] },
+          ];
+
       const result = await window.electronAPI.openFileDialog({
-        title: '选择脚本文件',
-        filters: [
-          { name: 'Python Files', extensions: ['py'] },
-          { name: 'JavaScript Files', extensions: ['js'] },
-          { name: 'Java Files', extensions: ['java'] },
-          { name: 'All Files', extensions: ['*'] },
-        ],
+        title: stepIndex === 2 ? '选择填报脚本文件（Python）' : '选择脚本文件',
+        filters: filters,
       });
 
       if (!result.canceled && result.filePath) {
         updateStepConfig(stepIndex, 'scriptPath', result.filePath);
         addLog('INFO', `[${stepLabels[stepIndex]}] 已选择文件: ${result.filePath}`);
 
-        // 根据文件扩展名自动设置语言
-        if (result.filePath.endsWith('.py')) {
+        // 根据文件扩展名自动设置语言（步骤3固定为 python）
+        if (stepIndex === 2) {
           updateStepConfig(stepIndex, 'scriptType', 'python');
-        } else if (result.filePath.endsWith('.js')) {
-          updateStepConfig(stepIndex, 'scriptType', 'nodejs');
-        } else if (result.filePath.endsWith('.java')) {
-          updateStepConfig(stepIndex, 'scriptType', 'java');
+        } else {
+          if (result.filePath.endsWith('.py')) {
+            updateStepConfig(stepIndex, 'scriptType', 'python');
+          } else if (result.filePath.endsWith('.js')) {
+            updateStepConfig(stepIndex, 'scriptType', 'nodejs');
+          } else if (result.filePath.endsWith('.java')) {
+            updateStepConfig(stepIndex, 'scriptType', 'java');
+          }
         }
       }
     } catch (error) {
@@ -521,121 +535,50 @@ print(json.dumps(processed_data, ensure_ascii=False, indent=2))
     addLog('INFO', `填报速度: ${config.autoFillSpeed}`, 2);
     addLog('INFO', `启用验证: ${config.verification}`, 2);
 
-    // 模拟系统登录
-    addLog('INFO', `正在连接到 ${config.loginUrl}...`, 2);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    addLog('INFO', '正在登录系统...', 2);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    addLog('SUCCESS', '✅ 系统登录成功', 2);
-
-    // 模拟填报过程
-    addLog('INFO', '正在打开收货单界面...', 2);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    addLog('INFO', '正在填写表头信息...', 2);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    for (let i = 1; i <= 3; i++) {
-      addLog('INFO', `正在填写第 ${i} 行物料信息...`, 2);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // 检查是否选择了填报脚本
+    if (!config.scriptPath) {
+      addLog('WARNING', '未选择填报脚本，跳过此步骤', 2);
+      return;
     }
 
-    if (config.verification) {
-      addLog('INFO', '正在验证填报数据...', 2);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      addLog('SUCCESS', '✅ 数据验证通过', 2);
-    }
+    addLog('INFO', `📄 填报脚本: ${config.scriptPath}`, 2);
+    addLog('INFO', `🐍 脚本类型: ${config.scriptType}`, 2);
 
-    addLog('INFO', '正在提交收货单...', 2);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    addLog('SUCCESS', '✅ 收货单提交成功！单号: GR2024102100156', 2);
-    addLog('INFO', '正在生成执行报告...', 2);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const report = {
-      executionId: `EXEC_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      documentNumber: 'SH20241021001',
-      receiptNumber: 'GR2024102100156',
-      itemsProcessed: 3,
-      totalAmount: 77450.00,
-      executionTime: '45秒',
-      status: 'SUCCESS'
-    };
-
-    addLog('SUCCESS', `📋 执行报告: ${JSON.stringify(report, null, 2)}`, 2);
-
-    // 实际的填报脚本示例（简化版，不依赖selenium）
+    // 执行实际的填报脚本
     if (window.electronAPI) {
-      const scriptCode = `import json
-import time
-
-# 模拟处理后的数据
-processed_data = {
-    "header": {
-        "documentNumber": "SH20241021001",
-        "supplier": "上海电力设备有限公司"
-    },
-    "items": [
-        {"lineNumber": 1, "materialName": "变压器配件", "quantity": 5},
-        {"lineNumber": 2, "materialName": "绝缘子", "quantity": 100},
-        {"lineNumber": 3, "materialName": "电缆终端头", "quantity": 20}
-    ]
-}
-
-# 模拟系统配置
-config = {
-    "targetSystem": "erp",
-    "loginUrl": "https://erp.company.com/login"
-}
-
-# 模拟自动填报流程
-print("正在连接到系统: {}".format(config["loginUrl"]))
-time.sleep(0.5)
-
-print("正在登录系统...")
-time.sleep(0.5)
-
-print("正在填写单据: {}".format(processed_data["header"]["documentNumber"]))
-time.sleep(0.5)
-
-for item in processed_data["items"]:
-    print("填写第 {} 行: {} - 数量 {}".format(
-        item["lineNumber"],
-        item["materialName"],
-        item["quantity"]
-    ))
-    time.sleep(0.3)
-
-# 模拟提交结果
-result = {
-    "success": True,
-    "receiptNumber": "GR2024102100156",
-    "itemsProcessed": len(processed_data["items"])
-}
-
-print("填报完成！")
-print(json.dumps(result, ensure_ascii=False, indent=2))
-`;
-
       try {
+        addLog('INFO', '正在执行填报脚本...', 2);
+
         const result = await window.electronAPI.executeScript({
-          type: 'python',
-          code: scriptCode,
+          type: config.scriptType,
+          filePath: config.scriptPath,
           args: []
         });
 
         if (result.success) {
-          addLog('SUCCESS', '填报脚本执行成功', 2);
+          addLog('SUCCESS', '✅ 填报脚本执行成功', 2);
+          addLog('INFO', '正在生成执行报告...', 2);
+
+          const report = {
+            executionId: `EXEC_${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            scriptPath: config.scriptPath,
+            scriptType: config.scriptType,
+            status: 'SUCCESS'
+          };
+
+          addLog('SUCCESS', `📋 执行报告: ${JSON.stringify(report, null, 2)}`, 2);
         } else {
-          addLog('ERROR', `填报脚本失败: ${result.error}`, 2);
+          addLog('ERROR', `❌ 填报脚本执行失败: ${result.error}`, 2);
+          throw new Error(result.error || '脚本执行失败');
         }
       } catch (error) {
-        addLog('WARNING', `填报脚本遇到问题: ${error}`, 2);
+        addLog('ERROR', `填报脚本执行遇到错误: ${error}`, 2);
+        throw error;
       }
+    } else {
+      addLog('WARNING', 'Electron API 不可用，无法执行脚本', 2);
+      throw new Error('Electron API 不可用');
     }
   };
 
@@ -861,7 +804,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
               <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {/* 步骤1: 扫描配置 */}
                 <Accordion
-                  expanded={activeStep === 0}
+                  defaultExpanded={true}
                   sx={{
                     mb: 2,
                     borderRadius: 2,
@@ -980,7 +923,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 
                 {/* 步骤2: 数据处理配置 */}
                 <Accordion
-                  expanded={activeStep === 1}
+                  defaultExpanded={true}
                   sx={{
                     mb: 2,
                     borderRadius: 2,
@@ -1151,7 +1094,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 
                 {/* 步骤3: 填报配置 */}
                 <Accordion
-                  expanded={activeStep === 2}
+                  defaultExpanded={true}
                   sx={{
                     mb: 2,
                     borderRadius: 2,
@@ -1229,9 +1172,46 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Alert severity="info">
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Button
+                          variant="outlined"
+                          startIcon={<Upload />}
+                          onClick={() => handleSelectFile(2)}
+                          fullWidth
+                        >
+                          选择填报脚本文件（Python）
+                        </Button>
+                        {steps[2].config.scriptPath && (
+                          <Alert severity="info" sx={{ mt: 1 }}>
+                            <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                              已选择: {steps[2].config.scriptPath}
+                            </Typography>
+                          </Alert>
+                        )}
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          label="目标系统"
+                          value={steps[2].config.targetSystem}
+                          onChange={(e) => updateStepConfig(2, 'targetSystem', e.target.value)}
+                          placeholder="例如: ERP系统"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          label="系统登录URL"
+                          value={steps[2].config.loginUrl}
+                          onChange={(e) => updateStepConfig(2, 'loginUrl', e.target.value)}
+                          placeholder="https://erp.company.com/login"
+                        />
+                      </Grid>
+                    </Grid>
+                    <Alert severity="info" sx={{ mt: 2 }}>
                       <Typography variant="body2">
-                        此步骤将执行填报脚本，通过自动化技术访问目标系统，自动填写表单并提交处理后的数据。
+                        此步骤将执行填报脚本（Python），通过自动化技术访问目标系统，自动填写表单并提交处理后的数据。
                       </Typography>
                     </Alert>
                   </AccordionDetails>

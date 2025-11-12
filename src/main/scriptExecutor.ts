@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { BrowserWindow } from 'electron';
+import * as iconv from 'iconv-lite';
 
 export interface ScriptExecutionData {
   type: 'python' | 'java' | 'nodejs';
@@ -223,18 +224,30 @@ export class ScriptExecutor {
         }
       }
 
-      const process = spawn(javacCommand, [javaFilePath]);
+      // Windows下需要指定编码，避免中文乱码
+      const spawnOptions = os.platform() === 'win32' ? {
+        windowsHide: true,
+        encoding: 'buffer' as BufferEncoding
+      } : {};
+
+      const process = spawn(javacCommand, [javaFilePath], spawnOptions);
 
       let stderr = '';
 
       process.stderr?.on('data', (data) => {
-        const output = data.toString();
+        // Windows下使用GBK解码，其他平台使用UTF-8
+        const output = os.platform() === 'win32'
+          ? this.decodeWindowsOutput(data)
+          : data.toString('utf8');
         stderr += output;
         this.sendLog('ERROR', `编译错误: ${output.trim()}`);
       });
 
       process.stdout?.on('data', (data) => {
-        const output = data.toString();
+        // Windows下使用GBK解码，其他平台使用UTF-8
+        const output = os.platform() === 'win32'
+          ? this.decodeWindowsOutput(data)
+          : data.toString('utf8');
         this.sendLog('INFO', `编译信息: ${output.trim()}`);
       });
 
@@ -309,7 +322,13 @@ export class ScriptExecutor {
         }
       }
 
-      const process = spawn(command, processArgs);
+      // Windows下需要指定编码，避免中文乱码
+      const spawnOptions = os.platform() === 'win32' ? {
+        windowsHide: true,
+        encoding: 'buffer' as BufferEncoding
+      } : {};
+
+      const process = spawn(command, processArgs, spawnOptions);
       const processId = Date.now().toString();
       this.runningProcesses.set(processId, process);
 
@@ -317,13 +336,19 @@ export class ScriptExecutor {
       let stderr = '';
 
       process.stdout?.on('data', (data) => {
-        const output = data.toString();
+        // Windows下使用GBK解码，其他平台使用UTF-8
+        const output = os.platform() === 'win32'
+          ? this.decodeWindowsOutput(data)
+          : data.toString('utf8');
         stdout += output;
         this.sendLog('INFO', output.trim());
       });
 
       process.stderr?.on('data', (data) => {
-        const output = data.toString();
+        // Windows下使用GBK解码，其他平台使用UTF-8
+        const output = os.platform() === 'win32'
+          ? this.decodeWindowsOutput(data)
+          : data.toString('utf8');
         stderr += output;
         this.sendLog('ERROR', output.trim());
       });
@@ -363,17 +388,31 @@ export class ScriptExecutor {
    */
   private execCommand(command: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const process = spawn(command, args);
+      // Windows下需要指定编码，避免中文乱码
+      const spawnOptions = os.platform() === 'win32' ? {
+        windowsHide: true,
+        encoding: 'buffer' as BufferEncoding
+      } : {};
+
+      const process = spawn(command, args, spawnOptions);
 
       let stdout = '';
       let stderr = '';
 
       process.stdout?.on('data', (data) => {
-        stdout += data.toString();
+        // Windows下使用GBK解码，其他平台使用UTF-8
+        const output = os.platform() === 'win32'
+          ? this.decodeWindowsOutput(data)
+          : data.toString('utf8');
+        stdout += output;
       });
 
       process.stderr?.on('data', (data) => {
-        stderr += data.toString();
+        // Windows下使用GBK解码，其他平台使用UTF-8
+        const output = os.platform() === 'win32'
+          ? this.decodeWindowsOutput(data)
+          : data.toString('utf8');
+        stderr += output;
       });
 
       process.on('close', (code) => {
@@ -408,6 +447,20 @@ export class ScriptExecutor {
       }
     } catch (error) {
       console.error('清理临时文件失败:', error);
+    }
+  }
+
+  /**
+   * Windows下解码GBK编码的输出
+   */
+  private decodeWindowsOutput(buffer: Buffer): string {
+    try {
+      // 使用iconv-lite库进行GBK解码（Windows中文系统默认使用GBK编码）
+      return iconv.decode(buffer, 'gbk');
+    } catch (error) {
+      // 如果解码失败，回退到UTF-8
+      console.warn('GBK decoding failed, falling back to UTF-8:', error);
+      return buffer.toString('utf8');
     }
   }
 
