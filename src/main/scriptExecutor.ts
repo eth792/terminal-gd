@@ -10,6 +10,7 @@ export interface ScriptExecutionData {
   filePath?: string; // 脚本文件路径（可选）
   args?: string[];
   workingDirectory?: string;
+  runtimePath?: string; // 自定义运行环境路径（可选）
 }
 
 export interface ExecutionResult {
@@ -75,7 +76,7 @@ export class ScriptExecutor {
       }
 
       // 执行脚本
-      const result = await this.runScript(data.type, scriptPath, data.args || []);
+      const result = await this.runScript(data.type, scriptPath, data.args || [], data.runtimePath);
 
       // 清理临时文件（仅当使用内联代码时）
       if (needsCleanup) {
@@ -208,9 +209,21 @@ export class ScriptExecutor {
   /**
    * 编译Java文件
    */
-  private async compileJavaFile(javaFilePath: string): Promise<void> {
+  private async compileJavaFile(javaFilePath: string, runtimePath?: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const process = spawn('javac', [javaFilePath]);
+      // 如果指定了Java运行环境路径，尝试找到对应的javac
+      let javacCommand = 'javac';
+      if (runtimePath && fs.existsSync(runtimePath)) {
+        // 假设java和javac在同一目录
+        const dir = path.dirname(runtimePath);
+        const javacPath = path.join(dir, 'javac' + (os.platform() === 'win32' ? '.exe' : ''));
+        if (fs.existsSync(javacPath)) {
+          javacCommand = javacPath;
+          this.sendLog('INFO', `使用自定义javac: ${javacCommand}`);
+        }
+      }
+
+      const process = spawn(javacCommand, [javaFilePath]);
 
       let stderr = '';
 
@@ -243,11 +256,15 @@ export class ScriptExecutor {
   /**
    * 执行脚本
    */
-  private async runScript(type: string, scriptPath: string, args: string[]): Promise<ExecutionResult> {
+  private async runScript(type: string, scriptPath: string, args: string[], runtimePath?: string): Promise<ExecutionResult> {
     return new Promise(async (resolve) => {
       let command: string;
 
-      if (type === 'python') {
+      // 优先使用自定义运行环境路径
+      if (runtimePath && fs.existsSync(runtimePath)) {
+        command = runtimePath;
+        this.sendLog('INFO', `使用自定义运行环境: ${runtimePath}`);
+      } else if (type === 'python') {
         try {
           command = await this.getPythonCommand();
         } catch (error) {
@@ -271,11 +288,17 @@ export class ScriptExecutor {
       if (type === 'java') {
         try {
           // 先编译Java文件
-          await this.compileJavaFile(scriptPath);
+          await this.compileJavaFile(scriptPath, runtimePath);
 
           const dir = path.dirname(scriptPath);
           const className = path.basename(scriptPath, '.java');
-          command = 'java';
+
+          // 如果有自定义运行环境，使用它；否则使用默认的java命令
+          if (!runtimePath || !fs.existsSync(runtimePath)) {
+            command = 'java';
+          }
+          // else: command已经被设置为runtimePath
+
           processArgs = ['-cp', dir, className, ...args];
         } catch (compileError) {
           resolve({

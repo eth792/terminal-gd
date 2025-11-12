@@ -40,6 +40,7 @@ const OrderGenerationExecutionPage: React.FC = () => {
     language: 'python',
     filePath: 'test_scripts/hello.py', // 默认文件路径
     args: '',
+    runtimePath: '', // 运行环境路径
   });
 
   // 添加日志消息
@@ -106,6 +107,35 @@ const OrderGenerationExecutionPage: React.FC = () => {
     }
   };
 
+  // 选择运行环境路径
+  const handleSelectRuntimePath = async () => {
+    if (!window.electronAPI) {
+      addLog('WARNING', 'Electron API 不可用');
+      return;
+    }
+
+    try {
+      // 根据语言类型设置不同的过滤器
+      const filters = scriptConfig.language === 'python'
+        ? [{ name: 'Python Executable', extensions: ['exe', '*'] }]
+        : scriptConfig.language === 'java'
+        ? [{ name: 'Java Executable', extensions: ['exe', '*'] }]
+        : [{ name: 'Node.js Executable', extensions: ['exe', '*'] }];
+
+      const result = await window.electronAPI.openFileDialog({
+        title: `选择${scriptConfig.language === 'python' ? 'Python' : scriptConfig.language === 'java' ? 'Java' : 'Node.js'}运行环境路径`,
+        filters,
+      });
+
+      if (!result.canceled && result.filePath) {
+        setScriptConfig(prev => ({ ...prev, runtimePath: result.filePath ?? '' }));
+        addLog('INFO', `已选择运行环境: ${result.filePath}`);
+      }
+    } catch (error) {
+      addLog('ERROR', `选择运行环境失败: ${error}`);
+    }
+  };
+
   // 执行脚本
   const handleExecute = async () => {
     setExecutionState(prev => ({ ...prev, status: 'running', progress: 0 }));
@@ -132,6 +162,7 @@ const OrderGenerationExecutionPage: React.FC = () => {
           type: scriptConfig.language,
           filePath: scriptConfig.filePath,
           args: scriptConfig.args ? scriptConfig.args.split(' ') : [],
+          runtimePath: scriptConfig.runtimePath || undefined, // 传递运行环境路径
         };
 
         const result = await window.electronAPI.executeScript(executionData);
@@ -306,6 +337,31 @@ const OrderGenerationExecutionPage: React.FC = () => {
                       已选择文件: {scriptConfig.filePath}
                     </Typography>
                   </Alert>
+                )}
+              </Box>
+
+              {/* 运行环境路径选择 */}
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<FolderOpen />}
+                  onClick={handleSelectRuntimePath}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                >
+                  选择运行环境路径（可选）
+                </Button>
+                {scriptConfig.runtimePath && (
+                  <Alert severity="success">
+                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                      运行环境: {scriptConfig.runtimePath}
+                    </Typography>
+                  </Alert>
+                )}
+                {!scriptConfig.runtimePath && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    未设置时将使用系统默认的 {scriptConfig.language === 'python' ? 'Python' : scriptConfig.language === 'java' ? 'Java' : 'Node.js'} 环境
+                  </Typography>
                 )}
               </Box>
 
