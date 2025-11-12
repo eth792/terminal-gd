@@ -16,6 +16,143 @@ export interface EnvironmentResult {
 export class EnvironmentChecker {
 
   /**
+   * 从 Windows 注册表读取 JAVA_HOME
+   */
+  private async getJavaHomeFromRegistry(): Promise<string | null> {
+    if (os.platform() !== 'win32') {
+      return null;
+    }
+
+    const registryPaths = [
+      // 64位 JDK
+      'HKLM\\SOFTWARE\\JavaSoft\\JDK',
+      'HKLM\\SOFTWARE\\JavaSoft\\Java Development Kit',
+      // 32位 JDK
+      'HKLM\\SOFTWARE\\WOW6432Node\\JavaSoft\\JDK',
+      'HKLM\\SOFTWARE\\WOW6432Node\\JavaSoft\\Java Development Kit',
+      // JRE paths
+      'HKLM\\SOFTWARE\\JavaSoft\\JRE',
+      'HKLM\\SOFTWARE\\WOW6432Node\\JavaSoft\\JRE'
+    ];
+
+    for (const regPath of registryPaths) {
+      try {
+        // 先获取当前版本
+        const { stdout: versionOutput } = await execPromise(
+          `reg query "${regPath}" /v CurrentVersion`,
+          { timeout: 5000 }
+        );
+
+        const versionMatch = versionOutput.match(/CurrentVersion\s+REG_SZ\s+(.+)/);
+        if (!versionMatch) continue;
+
+        const currentVersion = versionMatch[1].trim();
+        log.debug(`Found Java version in registry: ${currentVersion}`);
+
+        // 获取该版本的 JavaHome
+        const { stdout: homeOutput } = await execPromise(
+          `reg query "${regPath}\\${currentVersion}" /v JavaHome`,
+          { timeout: 5000 }
+        );
+
+        const homeMatch = homeOutput.match(/JavaHome\s+REG_SZ\s+(.+)/);
+        if (homeMatch) {
+          const javaHome = homeMatch[1].trim();
+          log.info(`Found JAVA_HOME from registry: ${javaHome}`);
+          return javaHome;
+        }
+      } catch (error) {
+        log.debug(`Failed to read registry path ${regPath}:`, error);
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 查找 Windows 下常见的 Java 安装路径
+   */
+  private async findJavaOnWindows(): Promise<string | null> {
+    const possibleBasePaths = [
+      'C:\\Program Files\\Java',
+      'C:\\Program Files (x86)\\Java',
+      'C:\\Program Files\\Eclipse Adoptium',
+      'C:\\Program Files\\AdoptOpenJDK',
+      'C:\\Program Files\\Zulu',
+      process.env.ProgramFiles ? `${process.env.ProgramFiles}\\Java` : null,
+      process.env['ProgramFiles(x86)'] ? `${process.env['ProgramFiles(x86)']}\\Java` : null,
+    ].filter(p => p !== null) as string[];
+
+    for (const basePath of possibleBasePaths) {
+      try {
+        // 列出该目录下的所有 JDK 文件夹
+        const { stdout } = await execPromise(`dir "${basePath}" /b`, { timeout: 5000 });
+        const folders = stdout.split('\n').map(f => f.trim()).filter(f => f);
+
+        // 查找包含 jdk 的文件夹
+        const jdkFolders = folders.filter(f =>
+          f.toLowerCase().includes('jdk') ||
+          f.toLowerCase().includes('java')
+        );
+
+        for (const folder of jdkFolders) {
+          const javaPath = path.join(basePath, folder, 'bin', 'java.exe');
+          try {
+            // 检查 java.exe 是否存在
+            await execPromise(`if exist "${javaPath}" echo exists`, { timeout: 3000 });
+            log.info(`Found Java at: ${javaPath}`);
+            return path.join(basePath, folder);
+          } catch (error) {
+            continue;
+          }
+        }
+      } catch (error) {
+        log.debug(`Failed to search in ${basePath}:`, error);
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 获取 Windows 系统环境变量中的 PATH
+   */
+  private async refreshWindowsPath(): Promise<string> {
+    try {
+      // 读取系统级 PATH
+      const { stdout: systemPath } = await execPromise(
+        'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment" /v Path',
+        { timeout: 5000 }
+      );
+
+      // 读取用户级 PATH
+      const { stdout: userPath } = await execPromise(
+        'reg query "HKCU\\Environment" /v Path',
+        { timeout: 5000 }
+      );
+
+      const systemPathMatch = systemPath.match(/Path\s+REG_(?:EXPAND_)?SZ\s+(.+)/);
+      const userPathMatch = userPath.match(/Path\s+REG_(?:EXPAND_)?SZ\s+(.+)/);
+
+      const systemPathValue = systemPathMatch ? systemPathMatch[1].trim() : '';
+      const userPathValue = userPathMatch ? userPathMatch[1].trim() : '';
+
+      // 合并系统和用户 PATH
+      const combinedPath = [systemPathValue, userPathValue]
+        .filter(p => p)
+        .join(';');
+
+      log.debug(`Refreshed Windows PATH: ${combinedPath.substring(0, 200)}...`);
+      return combinedPath;
+    } catch (error) {
+      log.debug('Failed to refresh Windows PATH from registry:', error);
+      return process.env.PATH || '';
+    }
+  }
+
+  /**
    * 获取带有shell环境的执行选项
    */
   private getShellExecOptions(): { shell: string; env: NodeJS.ProcessEnv } {
@@ -78,7 +215,24 @@ export class EnvironmentChecker {
 
       // 如果直接执行失败，尝试使用shell环境
       if (platform === 'win32') {
-        throw directError; // Windows下直接抛出错误
+        // Windows 下尝试刷新环境变量后重试
+        try {
+          const refreshedPath = await this.refreshWindowsPath();
+          log.debug(`Retrying with refreshed Windows PATH`);
+
+          return await execPromise(command, {
+            env: {
+              ...process.env,
+              PATH: refreshedPath
+            },
+            timeout: 10000
+          });
+        } catch (refreshError) {
+          log.error(`Both direct and refreshed execution failed for command: ${command}`);
+          log.error(`Direct error:`, directError);
+          log.error(`Refresh error:`, refreshError);
+          throw directError; // 抛出原始错误
+        }
       }
 
       try {
@@ -340,23 +494,122 @@ export class EnvironmentChecker {
    * 检查Java环境
    */
   private async checkJava(): Promise<EnvironmentResult> {
-    try {
-      // 检查Java运行时
-      const { stdout, stderr } = await this.execWithShellEnv('java -version');
-      const versionOutput = stderr || stdout;
+    const platform = os.platform();
+    let javaHome: string | null = null;
+    let versionOutput = '';
 
-      // 检查Java编译器
-      try {
-        await this.execWithShellEnv('javac -version');
-      } catch (javacError) {
-        return {
-          name: 'Java',
-          version: null,
-          status: 'error',
-          message: '找到Java运行时但未找到编译器javac，请安装完整的JDK'
-        };
+    // Windows 平台特殊处理
+    if (platform === 'win32') {
+      // 方法1: 尝试从注册表读取 JAVA_HOME
+      javaHome = await this.getJavaHomeFromRegistry();
+
+      if (javaHome) {
+        log.info(`Using JAVA_HOME from registry: ${javaHome}`);
+        const javaExe = path.join(javaHome, 'bin', 'java.exe');
+        const javacExe = path.join(javaHome, 'bin', 'javac.exe');
+
+        try {
+          // 使用完整路径执行 java -version
+          const { stdout, stderr } = await execPromise(`"${javaExe}" -version`, { timeout: 10000 });
+          versionOutput = stderr || stdout;
+
+          // 检查 javac 是否存在
+          try {
+            await execPromise(`"${javacExe}" -version`, { timeout: 10000 });
+          } catch (javacError) {
+            return {
+              name: 'Java',
+              version: null,
+              status: 'error',
+              message: `找到Java运行时（${javaHome}）但未找到编译器javac，请安装完整的JDK`
+            };
+          }
+
+          // versionOutput 有值，跳到版本解析
+        } catch (error) {
+          log.debug(`Failed to execute Java from registry path: ${javaHome}`, error);
+          javaHome = null; // 重置，尝试其他方法
+        }
       }
 
+      // 方法2: 如果注册表方法失败，尝试搜索常见安装路径
+      if (!javaHome || !versionOutput) {
+        javaHome = await this.findJavaOnWindows();
+
+        if (javaHome) {
+          log.info(`Using Java found at: ${javaHome}`);
+          const javaExe = path.join(javaHome, 'bin', 'java.exe');
+          const javacExe = path.join(javaHome, 'bin', 'javac.exe');
+
+          try {
+            const { stdout, stderr } = await execPromise(`"${javaExe}" -version`, { timeout: 10000 });
+            versionOutput = stderr || stdout;
+
+            // 检查 javac
+            try {
+              await execPromise(`"${javacExe}" -version`, { timeout: 10000 });
+            } catch (javacError) {
+              return {
+                name: 'Java',
+                version: null,
+                status: 'error',
+                message: `找到Java运行时（${javaHome}）但未找到编译器javac，请安装完整的JDK`
+              };
+            }
+          } catch (error) {
+            log.debug(`Failed to execute Java from found path: ${javaHome}`, error);
+            javaHome = null;
+          }
+        }
+      }
+
+      // 方法3: 如果上述方法都失败，尝试使用环境变量中的 java 命令
+      if (!javaHome || !versionOutput) {
+        try {
+          const { stdout, stderr } = await this.execWithShellEnv('java -version');
+          versionOutput = stderr || stdout;
+
+          // 检查 javac
+          try {
+            await this.execWithShellEnv('javac -version');
+          } catch (javacError) {
+            return {
+              name: 'Java',
+              version: null,
+              status: 'error',
+              message: '找到Java运行时但未找到编译器javac，请安装完整的JDK'
+            };
+          }
+        } catch (error) {
+          throw error; // 所有方法都失败，抛出错误
+        }
+      }
+    } else {
+      // Unix-like 系统（macOS, Linux）使用原有逻辑
+      try {
+        // 检查Java运行时
+        const { stdout, stderr } = await this.execWithShellEnv('java -version');
+        versionOutput = stderr || stdout;
+
+        // 检查Java编译器
+        try {
+          await this.execWithShellEnv('javac -version');
+        } catch (javacError) {
+          return {
+            name: 'Java',
+            version: null,
+            status: 'error',
+            message: '找到Java运行时但未找到编译器javac，请安装完整的JDK'
+          };
+        }
+      } catch (error) {
+        log.error('Java check failed:', error);
+        throw error;
+      }
+    }
+
+    // 统一的版本解析逻辑（Windows 和 Unix 共用）
+    try {
       if (versionOutput) {
         // 解析Java版本信息
         const versionMatch = versionOutput.match(/version "([^"]+)"/);
@@ -412,16 +665,25 @@ export class EnvironmentChecker {
     } catch (error) {
       log.error('Java check failed:', error);
 
+      const platform = os.platform();
       let errorMessage = '未找到Java，请安装JDK 11+（需要包含java和javac命令）';
 
       if (error instanceof Error) {
         const errorStr = error.message.toLowerCase();
 
         if (errorStr.includes('command not found') || errorStr.includes('not found')) {
-          errorMessage = '未找到Java环境。建议解决方案：\n' +
-                        '1. macOS: brew install openjdk\n' +
-                        '2. 或访问 https://adoptium.net 下载安装OpenJDK\n' +
-                        '3. 确保JAVA_HOME环境变量正确设置';
+          if (platform === 'win32') {
+            errorMessage = '未找到Java环境。建议解决方案：\n' +
+                          '1. 访问 https://adoptium.net 下载安装 Eclipse Temurin (OpenJDK)\n' +
+                          '2. 或从 https://www.oracle.com/java/technologies/downloads/ 下载Oracle JDK\n' +
+                          '3. 安装后确保勾选"设置JAVA_HOME环境变量"和"添加到PATH"\n' +
+                          '4. 重启应用程序以加载新的环境变量';
+          } else {
+            errorMessage = '未找到Java环境。建议解决方案：\n' +
+                          '1. macOS: brew install openjdk\n' +
+                          '2. 或访问 https://adoptium.net 下载安装OpenJDK\n' +
+                          '3. 确保JAVA_HOME环境变量正确设置';
+          }
         } else if (errorStr.includes('timeout')) {
           errorMessage = 'Java检测超时，可能系统负载过高，请稍后重试';
         }

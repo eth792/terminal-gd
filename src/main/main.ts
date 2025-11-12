@@ -209,17 +209,18 @@ ipcMain.handle('open-external', async (_event, url: string) => {
 ipcMain.handle('open-file-dialog', async (_event, options?: {
   title?: string;
   filters?: Array<{ name: string; extensions: string[] }>;
+  properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles' | 'createDirectory'>;
 }) => {
   try {
     const result = await dialog.showOpenDialog({
-      title: options?.title || '选择脚本文件',
+      title: options?.title || '选择文件',
       filters: options?.filters || [
         { name: 'Python Files', extensions: ['py'] },
         { name: 'JavaScript Files', extensions: ['js'] },
         { name: 'Java Files', extensions: ['java'] },
         { name: 'All Files', extensions: ['*'] },
       ],
-      properties: ['openFile'],
+      properties: options?.properties || ['openFile'],
     });
 
     if (result.canceled || result.filePaths.length === 0) {

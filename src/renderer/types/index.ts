@@ -94,6 +94,7 @@ export interface ElectronAPI {
   openFileDialog: (options?: {
     title?: string;
     filters?: Array<{ name: string; extensions: string[] }>;
+    properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles' | 'createDirectory'>;
   }) => Promise<{ canceled: boolean; filePath?: string }>;
 }
 
