@@ -613,3 +613,271 @@ function recallWithPrefilter(q_tokens: string[], index: DBIndex, maxCand: number
 ---
 
 —— v0.1.1 完 ——
+
+---
+
+## 13. 迭代记录 - v0.1.2: 多文件索引支持
+
+**发布日期**: 2025-11-12  
+**关键问题**: 原方案只支持单个 DB 文件，无法处理多个 Excel/CSV 文件的场景  
+**核心改进**: 支持目录输入，自动扫描并合并所有 `.xlsx/.xls/.csv` 文件
+
+---
+
+### 13.1 问题发现
+
+#### 背景
+在实际生产环境中，DB 数据分散在多个 Excel 文件中：
+- `ledger-1.xlsx`: 89,087 行（34 MB）
+- `ledger-2.xlsx`: 88,956 行（35 MB）
+- 总数据量：**178,043 行**
+
+原有方案只能指定单个文件：
+```bash
+# ❌ 只索引了第一个文件（89K 行）
+pnpm ocr-core build-index --db ./data/db/ledger-1.xlsx --out index.json
+```
+
+#### 用户反馈
+> "为什么要进行转换，而不是直接读取 xlsx 或者 csv？"  
+> "现在建立索引是不是只对第一个 xlsx 进行扫描。应该是对 db 下所有的 xlsx 进行扫描。"
+
+**痛点**：
+1. 手动合并多个文件容易出错
+2. 需要重复索引多次，效率低
+3. 无法保证所有文件的列结构一致
+
+---
+
+### 13.2 设计方案
+
+#### 核心思路
+将 `--db` 参数从 "文件路径" 扩展为 "文件或目录路径"：
+
+```bash
+# ✅ 新方案：自动扫描目录下所有文件
+pnpm ocr-core build-index --db ./data/db --out index.json
+```
+
+#### 技术实现要点
+
+**1. 目录扫描与文件排序**
+```typescript
+export function scanDbDirectory(dirPath: string): string[] {
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  const files = entries
+    .filter(e => e.isFile())
+    .filter(e => /\.(xlsx|xls|csv)$/i.test(e.name))
+    .map(e => path.join(dirPath, e.name))
+    .sort(); // 排序保证 digest 稳定
+
+  if (files.length === 0) {
+    throw new Error(`No DB files found in directory: ${dirPath}`);
+  }
+  return files;
+}
+```
+
+**2. 多文件联合 Digest**
+```typescript
+export function computeMultiFileDigest(filePaths: string[]): string {
+  const hashes = filePaths.map(file => computeDigest(file));
+  // 联合 digest = hash(hash1 | hash2 | ...)
+  return crypto.createHash('sha256').update(hashes.join('|')).digest('hex');
+}
+```
+
+**3. 全局行 ID 与列名验证**
+```typescript
+let globalRowId = 0;
+let firstFileColumns: string[] | null = null;
+
+for (const dbFile of dbFiles) {
+  const { columns, rows } = await parseDbFile(dbFile);
+
+  // 验证列名一致性
+  if (firstFileColumns === null) {
+    firstFileColumns = columns;
+  } else if (columns.join(',') !== firstFileColumns.join(',')) {
+    throw new Error(`Column mismatch between files!`);
+  }
+
+  // 分配全局唯一 ID
+  for (const row of rows) {
+    globalRowId++;
+    allRows.push({ id: `${globalRowId}`, ...row });
+  }
+}
+```
+
+**4. 类型扩展**
+```typescript
+export interface InvertedIndex {
+  db_path: string;      // 输入路径（文件或目录）
+  db_files: string[];   // 实际读取的文件列表
+  digest: string;       // 多文件时为联合 digest
+  // ...
+}
+```
+
+---
+
+### 13.3 实施步骤
+
+#### 文件修改清单
+
+| 文件 | 变更行数 | 说明 |
+|------|---------|------|
+| `src/indexer/types.ts` | +1 | 增加 `db_files` 字段 |
+| `src/indexer/builder.ts` | +120 | 增加扫描/合并/验证逻辑 |
+| `src/cli/match-ocr.ts` | +10 | 修复 digest 校验支持目录 |
+
+#### 关键代码变更
+
+**`builder.ts` 核心修改**：
+```typescript
+export async function buildIndex(
+  dbPathOrDir: string,  // 支持文件或目录
+  normalizeConfig: NormalizeConfig,
+  options = {}
+): Promise<InvertedIndex> {
+  // 1. 检测是文件还是目录
+  const stat = fs.statSync(dbPathOrDir);
+  const dbFiles = stat.isDirectory()
+    ? scanDbDirectory(dbPathOrDir)
+    : [dbPathOrDir];
+
+  // 2. 计算联合 digest
+  const digest = dbFiles.length === 1
+    ? computeDigest(dbFiles[0])
+    : computeMultiFileDigest(dbFiles);
+
+  // 3. 解析所有文件并合并（验证列名一致性）
+  const allRows = await mergeAllFiles(dbFiles, options);
+
+  // 4. 构建倒排索引
+  return {
+    db_path: dbPathOrDir,
+    db_files: dbFiles,  // 新增字段
+    digest,
+    total_rows: allRows.length,
+    // ...
+  };
+}
+```
+
+**`match-ocr.ts` Digest 校验修复**：
+```typescript
+// 检测是文件还是目录
+const stat = fs_sync.statSync(args.db);
+const currentDigest = stat.isDirectory()
+  ? computeMultiFileDigest(scanDbDirectory(args.db))
+  : computeDigest(args.db);
+
+if (index.digest !== currentDigest) {
+  throw new Error('Index digest mismatch - DB has changed');
+}
+```
+
+---
+
+### 13.4 测试结果
+
+#### 索引构建性能
+
+| 指标 | 单文件 | 多文件（2个） | 增长 |
+|------|--------|-------------|------|
+| 总行数 | 89,087 | 178,043 | +100% |
+| 唯一 token 数 | 18,447 | 28,556 | +54.8% |
+| 构建耗时 | 42s | 94s | +123.8% |
+| 吞吐量 | ~2,120 行/s | ~1,890 行/s | -10.9% |
+| JSON 文件大小 | 89 MB | 177 MB | +98.9% |
+
+**性能分析**：
+- 吞吐量略有下降（-10.9%），在合理范围内
+- 主要开销在文件 I/O 和列名验证
+
+#### 匹配效果对比
+
+**测试条件**：222 个 OCR 文本，阈值 `autoPass=0.7, minFieldSim=0.6, minDeltaTop=0.03`
+
+| 指标 | 单文件（89K） | 多文件（178K） | 变化 |
+|------|-------------|--------------|------|
+| ✅ Exact（自动通过） | 35 (15.8%) | 7 (3.2%) | **-12.6%** |
+| ⚠️ Review（需审核） | 43 (19.4%) | 71 (32.0%) | **+12.6%** |
+| ❌ Fail（失败） | 144 (64.9%) | 144 (64.9%) | 0% |
+| 平均耗时 | 2.1s/文件 | 2.3s/文件 | +9.5% |
+
+**结果分析**：
+- **Exact 下降原因**：候选库扩大 1 倍，导致 Top1-Top2 差值缩小，更多样本触发 `DELTA_TOO_SMALL` 规则
+- **Review 上升原因**：系统发现了更多相似候选，保守地要求人工审核
+- **Fail 保持不变**：提取失败的样本不受候选库影响
+- **这是预期行为**：更大的候选库理应降低自动通过率，提高审核率
+
+#### Top 失败原因分布
+
+| 原因 | 次数 | 占比 |
+|------|------|------|
+| DELTA_TOO_SMALL | 71 | 33.0% |
+| FIELD_SIM_LOW_SUPPLIER | 60 | 27.9% |
+| FIELD_SIM_LOW_PROJECT | 46 | 21.4% |
+| EXTRACT_EMPTY_PROJECT | 18 | 8.4% |
+| EXTRACT_BOTH_EMPTY | 11 | 5.1% |
+
+---
+
+### 13.5 向后兼容性
+
+**完全兼容**：原有单文件命令无需修改：
+```bash
+# ✅ 仍然有效
+pnpm ocr-core build-index --db ./db/ledger-1.xlsx --out index.json
+pnpm ocr-core match-ocr --db ./db/ledger-1.xlsx --index index.json --out ./runs/test
+```
+
+**新增能力**：现在可以传入目录路径：
+```bash
+# ✅ 新增：自动扫描目录
+pnpm ocr-core build-index --db ./db --out index.json
+pnpm ocr-core match-ocr --db ./db --index index.json --out ./runs/test
+```
+
+---
+
+### 13.6 已知限制与未来改进
+
+#### 当前限制
+1. **列名必须完全一致**：不同文件的列名必须严格匹配，顺序也必须相同
+2. **内存占用翻倍**：178K 行索引占用 ~400 MB 内存（177 MB JSON + 解析开销）
+3. **无增量更新**：任何文件变更都需要重新构建完整索引
+
+#### 未来优化方向（v0.2.0+）
+1. **智能列名映射**：自动识别 "供应商" vs "供应单位" 等语义相同的列
+2. **分片索引**：每个文件一个分片，支持增量更新
+3. **压缩存储**：倒排索引使用 LevelDB/SQLite 持久化，降低内存占用 70%
+4. **并行构建**：利用 Worker Threads 多核构建，提速 2-3 倍
+
+---
+
+### 13.7 总结
+
+**核心成果**：
+- ✅ 支持多文件/目录输入，无需手动合并
+- ✅ 自动扫描、验证列名一致性、分配全局 ID
+- ✅ 多文件联合 digest 保证一致性
+- ✅ 完全向后兼容单文件模式
+- ✅ 实际测试：成功索引 178,043 行数据
+
+**工程价值**：
+1. **消除手动操作**：用户无需在 Excel 中手动合并文件
+2. **防止人为错误**：自动验证列名一致性，避免数据混乱
+3. **提升可维护性**：新增 DB 文件时，只需放入目录即可
+
+**Linus 式评价**：
+> "这是个真问题，不是臆想出来的。解决方案简单直接：文件 → 目录，单个 digest → 联合 digest。  
+> 数据结构没变（仍然是 `DbRow[]`），只是多了一个扫描和合并步骤。  
+> 没有特殊情况分支，向后兼容性是铁律。这就是 Good Taste。"
+
+---
+
+—— v0.1.2 完 ——

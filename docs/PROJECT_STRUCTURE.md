@@ -79,8 +79,47 @@
 │   ├── sample_python.py
 │   ├── shipping_receiving_demo.py
 │   └── myproject-0.0.1-SNAPSHOT.jar
-├── packages/                        # 共享库（后续新增）
-│   └── ocr-match-core/              # 建议：算法/阈值/报告 schema
+├── packages/                        # 共享库
+│   └── ocr-match-core/              # OCR 匹配核心算法库
+│       ├── src/
+│       │   ├── config/              # 配置加载与解析
+│       │   │   ├── load.ts          # loadLatestConfig - 加载 configs/latest.json
+│       │   │   ├── schema.ts        # Zod schemas - normalize/label_alias/domain
+│       │   │   └── types.ts         # Config 类型定义
+│       │   ├── normalize/           # 文本归一化管线
+│       │   │   ├── pipeline.ts      # normalizePipeline - replacements → maps → strip
+│       │   │   └── types.ts         # Normalize 类型定义
+│       │   ├── extract/             # OCR 文本字段提取
+│       │   │   ├── extractor.ts     # extractFromOcr - 行级扫描提取 supplier/project
+│       │   │   └── types.ts         # Extract 类型定义
+│       │   ├── indexer/             # 倒排索引构建
+│       │   │   ├── builder.ts       # buildIndex - 构建 n-gram 倒排索引
+│       │   │   ├── digest.ts        # computeDigest - SHA-256 校验
+│       │   │   ├── parser.ts        # parseDbFile - CSV/Excel 解析
+│       │   │   └── types.ts         # InvertedIndex 类型定义
+│       │   ├── match/               # 匹配策略
+│       │   │   ├── match.ts         # matchOneOcr - 三级匹配策略入口
+│       │   │   ├── fast-exact.ts    # fastExact - 完全匹配（f1===q1 && f2===q2）
+│       │   │   ├── anchor.ts        # anchorMatch - 单字段精确匹配
+│       │   │   ├── recall.ts        # recallWithPrefilter - n-gram 召回 + 两阶段过滤
+│       │   │   ├── rank.ts          # rankCandidates - 编辑距离 + Jaccard 混合打分
+│       │   │   └── types.ts         # Match 类型定义（MatchMode/MatchResult）
+│       │   ├── bucket/              # 结果分桶
+│       │   │   ├── bucketize.ts     # bucketizeResult - exact/review/fail 分类
+│       │   │   └── types.ts         # BucketType/BucketReason 枚举
+│       │   ├── report/              # 报告输出
+│       │   │   ├── schema.ts        # ResultRow - 20 列 CSV API 契约
+│       │   │   └── writer.ts        # writeRunBundle - 生成 manifest/summary/CSV/JSONL
+│       │   ├── cli/                 # CLI 工具
+│       │   │   ├── build-index.ts   # ocr-build-index - 构建索引
+│       │   │   ├── match-ocr.ts     # ocr-core - 批量匹配 OCR
+│       │   │   └── eval-sidecar.ts  # ocr-eval - 评估准确率
+│       │   ├── util/
+│       │   │   └── log.ts           # logger - 结构化日志（console + JSONL）
+│       │   └── index.ts             # 包入口（暴露核心 API）
+│       ├── dist/                    # TypeScript 编译输出（.js/.d.ts/.map）
+│       ├── package.json             # 包配置（bin/scripts/dependencies）
+│       └── tsconfig.json            # TypeScript 配置
 ├── runs/                            # 运行包（统一输出）
 │   └── run_YYYYmmdd_HHMMSS__prod/
 │       ├── manifest.json            # 输入、参数、统计、版本指纹
@@ -118,11 +157,48 @@
 
 - 定向构建/运行子包
   ```bash
-  pnpm -F @ocr/electron-app build
-  pnpm -F @ocr/electron-app dev
+  pnpm -F ./apps/electron-app build
+  pnpm -F ./apps/electron-app dev
   ```
 
-> 说明：根 `package.json` 使用 `pnpm -F`（filter）调用子包脚本，子包内部 `scripts` 保持原样。
+- **ocr-match-core CLI 工具**
+
+  构建核心包：
+  ```bash
+  cd packages/ocr-match-core && pnpm build
+  ```
+
+  构建 DB 索引：
+  ```bash
+  node --enable-source-maps packages/ocr-match-core/dist/cli/build-index.js \
+    --db ./data/db/ledger-1.xlsx \
+    --out ./runs/tmp/index_ledger1.json \
+    --field1 "s_field1" \
+    --field2 "s_field2"
+  ```
+
+  批量匹配 OCR 文本：
+  ```bash
+  node --enable-source-maps packages/ocr-match-core/dist/cli/match-ocr.js \
+    --ocr ./data/ocr_txt \
+    --index ./runs/tmp/index_ledger1.json \
+    --db ./data/db/ledger-1.xlsx \
+    --out ./runs/run_$(date +%Y%m%d_%H%M%S)__test \
+    --include-top3
+  ```
+
+  评估匹配准确率（可选）：
+  ```bash
+  node --enable-source-maps packages/ocr-match-core/dist/cli/eval-sidecar.js \
+    --results ./runs/run_XXX/results.csv \
+    --sidecar ./configs/sidecar_json \
+    --out ./runs/run_XXX/eval.md
+  ```
+
+> 说明：
+> - 使用 **path filter** (`-F ./path`) 而非包名，避免 pnpm 查找失败
+> - CLI 工具通过 `node --enable-source-maps` 直接调用编译后的脚本
+> - 所有命令支持 `--log-level debug|info|warn|error|silent` 控制日志级别
 
 ---
 
