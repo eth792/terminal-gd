@@ -79,6 +79,7 @@ function matchResultToRow(
     config_version: bundleConfig.config_version,
     config_sha: bundleConfig.config_sha,
     db_digest: bundleConfig.db_digest,
+    was_cleaned: result.was_cleaned ? 'YES' : 'NO',
   };
 }
 
@@ -114,6 +115,7 @@ export async function writeResultsCsv(
       'config_version',
       'config_sha',
       'db_digest',
+      'was_cleaned',
     ],
   });
 
@@ -164,6 +166,7 @@ export async function writeResultsTop3Csv(
       'config_version',
       'config_sha',
       'db_digest',
+      'was_cleaned',
     ],
   });
 

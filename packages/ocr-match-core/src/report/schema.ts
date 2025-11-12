@@ -50,6 +50,7 @@ export interface ResultRow {
   config_version: string;     // 配置版本（如 "v0.labs"）
   config_sha: string;         // 配置 sha（如 "f6b7160f"）
   db_digest: string;          // DB 指纹（用于验证索引与 DB 一致性）
+  was_cleaned: string;        // 是否被后处理清洗（"YES" | "NO"）
 }
 
 /**
@@ -76,6 +77,7 @@ export const ResultRowSchema = z.object({
   config_version: z.string(),
   config_sha: z.string(),
   db_digest: z.string(),
+  was_cleaned: z.enum(['YES', 'NO']),
 });
 
 /**
@@ -202,6 +204,7 @@ export const CSV_COLUMNS: Array<keyof ResultRow> = [
   'config_version',
   'config_sha',
   'db_digest',
+  'was_cleaned',
 ];
 
 /**
