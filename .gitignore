@@ -22,3 +22,4 @@ runs/**
 configs/v0.test/
 
 .spec-workflow/
+.vscode/
