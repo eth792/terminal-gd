@@ -2,6 +2,96 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## 🚀 快速状态恢复（新 Session 必读）
+
+**最后更新**: 2025-11-13 14:53
+**当前版本**: v0.1.5 (P1优化)
+**下一版本**: v0.1.6 (P2优化) - 计划中
+
+### 核心 KPI（v0.1.5）
+
+| 指标 | 数值 | vs Baseline | 目标 (v0.2.0) |
+|------|------|-------------|---------------|
+| **自动通过率** | **31.5%** | +775% (8.75x) | 40-45% |
+| Exact | 70 / 222 | +62 (+775%) | 80-90 |
+| Review | 25 / 222 | -55 (-68.8%) | 30-40 |
+| Fail | 127 / 222 | -7 (-5.2%) | 90-100 |
+
+### 关键文档导航
+
+**主控文档**（按此顺序阅读）：
+1. **[PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - 项目状态仪表盘（当前阶段、路线图、关键问题）
+2. **[implementation_record.md](docs/implementation_record.md)** - 完整版本历史和技术洞察
+3. **当前版本分析**：
+   - `analysis/v0.1.5/v0.1.5_实测报告.md` - v0.1.5 详细测试报告
+   - `analysis/current/v0.1.5_plan.md` - P1优化实施计划
+
+**历史版本文档**：
+- `analysis/v0.1.4/` - v0.1.4 (P0-Fix) 相关分析
+- `analysis/archived/` - 已过时文档归档
+
+### 最近完成的工作（v0.1.5）
+
+**实施日期**: 2025-11-13
+**Git Commit**: `b0cf951d` - feat(ocr-core): implement P1 optimization
+
+**代码变更**：
+- `packages/ocr-match-core/src/bucket/bucketize.ts` - 新增 Rule 3.5 (项目优先策略) + 降低 Rule 5 阈值
+- `packages/ocr-match-core/src/bucket/reasons.ts` - 新增 `SUPPLIER_DIFF_SAME_PROJECT` 失败原因
+
+**成果**：
+- 自动通过率：27.5% → **31.5%** (+4.0%, 1.15倍)
+- FIELD_SIM_LOW_SUPPLIER: -47.6% (42 → 22)
+- DELTA_TOO_SMALL: -33.3% (27 → 18)
+
+**测试运行包**: `runs/run_v0.1.5_fix_20251113_133741/`
+
+### 下一步计划（v0.1.6 - P2优化）
+
+**当前阶段**: Phase 3 (P2优化)
+
+**待实施任务**：
+- [ ] 调整 Rule 3.5 约束（放宽 f2_score 至 0.75，f1_score 上界至 0.65）
+- [ ] 分析 FIELD_SIM_LOW_PROJECT 增加原因（+13个案例）
+- [ ] 文档类型检测（识别"订货通知单" vs "验收单"）
+- [ ] 地名/术语归一化增强
+
+**预期成果**: 救回15-20个案例，自动通过率提升至34-36%
+
+### 快速恢复步骤（新 Session）
+
+如果 context 被清空或新开 session，按以下步骤恢复：
+
+```bash
+# 1. 查看项目状态
+cat docs/PROJECT_STATUS.md
+
+# 2. 定位当前版本详情
+cat docs/implementation_record.md | head -150
+
+# 3. 查看最新代码变更
+git log --oneline -3
+git show HEAD --stat
+
+# 4. 查看当前分桶逻辑
+cat packages/ocr-match-core/src/bucket/bucketize.ts
+```
+
+### 关键技术决策记录
+
+**已解决的设计缺陷**：
+1. **v0.1.4**: 分桶逻辑规则顺序错误 → 高置信度旁路修复（救回53个案例）
+2. **v0.1.5**: Rule 3.5 初始实现缺少上界约束 → 添加 `f1_score < 0.60` 约束
+
+**待解决的核心问题**（P2优先级）：
+1. Rule 3.5 约束过严（仅捕获7个案例，预期21个）
+2. FIELD_SIM_LOW_PROJECT 意外增加13个案例
+3. 文档类型不匹配导致的误判
+
+---
+
 ## 核心架构理念
 
 这个 monorepo 遵循"两个项目、一套真理"的设计哲学：
