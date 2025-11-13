@@ -54,9 +54,10 @@ export function bucketize(
   // 规则3.5: 项目高度匹配，供应商可放宽 → review
   // "项目优先"策略：同一项目可能由多个供应商分批供货
   // 当项目匹配度很高时，允许供应商有差异，交由人工审核
-  // ⚠️ 关键：只捕获f1_score在[0.40, 0.60)区间的边界案例
-  // f1_score >= 0.60的案例继续向下，可能进入高置信度旁路或自动通过
-  if (top1.f2_score >= 0.80 && top1.f1_score >= 0.40 && top1.f1_score < 0.60) {
+  // ⚠️ 关键：只捕获f1_score在[0.40, 0.65)区间的边界案例
+  // f1_score >= 0.65的案例继续向下，可能进入高置信度旁路或自动通过
+  // v0.1.6: 放宽阈值以救回更多边界案例（f2_score 0.80→0.75, f1上界 0.60→0.65）
+  if (top1.f2_score >= 0.75 && top1.f1_score >= 0.40 && top1.f1_score < 0.65) {
     return { bucket: 'review', reason: FailReason.SUPPLIER_DIFF_SAME_PROJECT };
   }
 

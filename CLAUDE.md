@@ -6,17 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 快速状态恢复（新 Session 必读）
 
-**最后更新**: 2025-11-13 14:53
-**当前版本**: v0.1.5 (P1优化)
-**下一版本**: v0.1.6 (P2优化) - 计划中
+**最后更新**: 2025-11-13 21:00
+**当前版本**: v0.1.6 (P2优化与提取逻辑诊断)
+**下一版本**: v0.1.7 (提取逻辑修复) - 计划中
 
-### 核心 KPI（v0.1.5）
+### 核心 KPI（v0.1.6）
 
 | 指标 | 数值 | vs Baseline | 目标 (v0.2.0) |
 |------|------|-------------|---------------|
-| **自动通过率** | **31.5%** | +775% (8.75x) | 40-45% |
-| Exact | 70 / 222 | +62 (+775%) | 80-90 |
-| Review | 25 / 222 | -55 (-68.8%) | 30-40 |
+| **自动通过率** | **31.9%** (预期) | +786% (8.86x) | 40-45% |
+| Exact | 71 / 222 (预期) | +63 (+786%) | 80-90 |
+| Review | 24 / 222 (预期) | -56 (-70.0%) | 30-40 |
 | Fail | 127 / 222 | -7 (-5.2%) | 90-100 |
 
 ### 关键文档导航
@@ -25,40 +25,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **[PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** - 项目状态仪表盘（当前阶段、路线图、关键问题）
 2. **[implementation_record.md](docs/implementation_record.md)** - 完整版本历史和技术洞察
 3. **当前版本分析**：
+   - `analysis/v0.1.6/v0.1.6_实测报告.md` - v0.1.6 详细测试报告（目标测试策略）
    - `analysis/v0.1.5/v0.1.5_实测报告.md` - v0.1.5 详细测试报告
-   - `analysis/current/v0.1.5_plan.md` - P1优化实施计划
 
 **历史版本文档**：
 - `analysis/v0.1.4/` - v0.1.4 (P0-Fix) 相关分析
 - `analysis/archived/` - 已过时文档归档
 
-### 最近完成的工作（v0.1.5）
+### 最近完成的工作（v0.1.6）
 
 **实施日期**: 2025-11-13
-**Git Commit**: `b0cf951d` - feat(ocr-core): implement P1 optimization
+**Git Commit**: 待创建 - feat(ocr-core): v0.1.6 Rule 3.5 adjustment + extraction logic diagnosis
 
 **代码变更**：
-- `packages/ocr-match-core/src/bucket/bucketize.ts` - 新增 Rule 3.5 (项目优先策略) + 降低 Rule 5 阈值
-- `packages/ocr-match-core/src/bucket/reasons.ts` - 新增 `SUPPLIER_DIFF_SAME_PROJECT` 失败原因
+- `packages/ocr-match-core/src/bucket/bucketize.ts:60` - 放宽 Rule 3.5 约束（f2_score: 0.80→0.75, f1上界: 0.60→0.65）
+- `configs/v0.labs/10dae06c/normalize.user.json:98-102` - OCR 归一化补充（"工理"→"工程"）
 
-**成果**：
-- 自动通过率：27.5% → **31.5%** (+4.0%, 1.15倍)
-- FIELD_SIM_LOW_SUPPLIER: -47.6% (42 → 22)
-- DELTA_TOO_SMALL: -33.3% (27 → 18)
+**成果（基于目标测试推断）**：
+- 自动通过率：31.5% → **31.9%** (+0.4%)
+- Exact: 70 → **71** (+1, +1.4%)
+- Review: 25 → **24** (-1, -4.0%)
+- Rule 3.5 成功捕获 1 个边界案例
 
-**测试运行包**: `runs/run_v0.1.5_fix_20251113_133741/`
+**关键发现 🔥**：
+- **提取逻辑缺陷**（P0 级问题）：50% 失败案例源于 `extract/extractor.ts` 行级扫描 Bug
+- 11-16 个案例因供应商字段提取错误导致 f1_score=0
+- 修复后预期 +5-7% 自动通过率（10倍 ROI 机会）
 
-### 下一步计划（v0.1.6 - P2优化）
+**测试运行包**: `runs/targeted_v0.1.6_test/` (22 样本目标测试, 14.3 分钟)
 
-**当前阶段**: Phase 3 (P2优化)
+### 下一步计划（v0.1.7-v0.1.8 - 提取逻辑修复）
 
-**待实施任务**：
-- [ ] 调整 Rule 3.5 约束（放宽 f2_score 至 0.75，f1_score 上界至 0.65）
-- [ ] 分析 FIELD_SIM_LOW_PROJECT 增加原因（+13个案例）
+**当前阶段**: Phase 4 (提取逻辑修复) - **下一阶段** 🔥
+
+**P0 级任务（高 ROI）**：
+- [ ] 修复提取器行级扫描逻辑（`extract/extractor.ts`）
+- [ ] 调试多行布局解析错误（50% 失败案例根源）
+- [ ] 验证 noise_words 截断机制
+
+**预期成果**: 自动通过率 31.9% → **37-39%** (+5-7%)
+
+**P1 级任务（中 ROI）**：
+- [ ] DB 缺失记录处理（baohuixianlanjituan4100965990.txt 案例）
 - [ ] 文档类型检测（识别"订货通知单" vs "验收单"）
 - [ ] 地名/术语归一化增强
-
-**预期成果**: 救回15-20个案例，自动通过率提升至34-36%
 
 ### 快速恢复步骤（新 Session）
 
@@ -84,11 +94,18 @@ cat packages/ocr-match-core/src/bucket/bucketize.ts
 **已解决的设计缺陷**：
 1. **v0.1.4**: 分桶逻辑规则顺序错误 → 高置信度旁路修复（救回53个案例）
 2. **v0.1.5**: Rule 3.5 初始实现缺少上界约束 → 添加 `f1_score < 0.60` 约束
+3. **v0.1.6**: Rule 3.5 阈值调整验证 → 放宽至 f2_score≥0.75, f1∈[0.40,0.65)（救回1个边界案例）
 
-**待解决的核心问题**（P2优先级）：
-1. Rule 3.5 约束过严（仅捕获7个案例，预期21个）
-2. FIELD_SIM_LOW_PROJECT 意外增加13个案例
-3. 文档类型不匹配导致的误判
+**关键技术发现**：
+1. **v0.1.6**: 发现提取逻辑根本缺陷（P0 级）
+   - 50% 失败案例源于 `extract/extractor.ts` 行级扫描 Bug
+   - 多行布局解析错误：提取到标签（"工程"）或工程名尾部（"村还建房A地块"）
+   - 预期修复后 +5-7% 自动通过率（10倍 ROI 机会）
+
+**待解决的核心问题**（P0 优先级）：
+1. **提取器 Bug**（v0.1.7-v0.1.8）：修复行级扫描与多行合并逻辑
+2. DB 缺失记录处理（部分案例 DB 无对应记录）
+3. 文档类型检测（订货通知单 vs 验收单）
 
 ---
 
