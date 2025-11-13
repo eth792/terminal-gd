@@ -54,14 +54,20 @@ export function bucketize(
     return { bucket: 'fail', reason: FailReason.FIELD_SIM_LOW_PROJECT };
   }
 
-  // 规则4: Top1-Top2 差值过小 → review
+  // 规则4: 高置信度旁路 - 极高分数直接通过，忽略 delta
+  // 修复设计缺陷：避免高质量匹配被 delta 检查误判为 review
+  if (top1.score >= 0.90 && top1.f1_score >= 0.80 && top1.f2_score >= 0.80) {
+    return { bucket: 'exact', reason: null };
+  }
+
+  // 规则5: Top1-Top2 差值过小 → review
   const top2 = candidates[1];
   const delta = top2 ? top1.score - top2.score : 1.0; // 只有1个候选时，delta=1.0
   if (delta < config.minDeltaTop) {
     return { bucket: 'review', reason: FailReason.DELTA_TOO_SMALL };
   }
 
-  // 规则5: 自动通过检查
+  // 规则6: 自动通过检查
   if (
     top1.score >= config.autoPass &&
     top1.f1_score >= config.minFieldSim &&
