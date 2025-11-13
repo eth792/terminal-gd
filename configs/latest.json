@@ -1,7 +1,7 @@
 {
-  "path": "configs/v0.labs/958582ab",
+  "path": "configs/v0.labs/10dae06c",
   "version": "v0.labs",
-  "sha": "958582ab",
-  "created_at": "20251112",
-  "note": "P0-1: Enhanced punctuation normalization (full-width/half-width conversion)"
+  "sha": "10dae06c",
+  "created_at": "20251113",
+  "note": "v0.1.6: OCR error correction - 工理→工程 (character confusion fix)"
 }
