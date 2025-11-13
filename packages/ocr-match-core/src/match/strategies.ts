@@ -5,7 +5,7 @@
 import type { InvertedIndex, DbRow } from '../indexer/types.js';
 import { recallByBothFields, lookupRows } from './recall.js';
 import { scoreAndRank, type ScoredCandidate } from './rank.js';
-import { singleFieldScore } from './similarity.js';
+import { singleFieldScore, type Normalizer } from './similarity.js';
 
 export type MatchMode = 'fast-exact' | 'anchor' | 'recall';
 
@@ -44,6 +44,7 @@ export function fastExactMatch(
  * 单字段完全匹配 + 另一字段相似度 >= threshold
  *
  * @param threshold - 另一字段的最低相似度阈值（默认 0.6）
+ * @param normalizer - 可选的归一化函数
  * @returns 如果找到符合条件的行，返回 TopK；否则返回空数组
  */
 export function anchorMatch(
@@ -51,7 +52,8 @@ export function anchorMatch(
   q2: string,
   index: InvertedIndex,
   threshold = 0.6,
-  topK = 3
+  topK = 3,
+  normalizer?: Normalizer
 ): ScoredCandidate[] {
   const candidates: ScoredCandidate[] = [];
 
@@ -63,7 +65,7 @@ export function anchorMatch(
     // 情况1: f1 完全匹配，f2 相似度 >= threshold
     if (row.f1 === q1) {
       f1_score = 1.0;
-      f2_score = singleFieldScore(q2, row.f2);
+      f2_score = singleFieldScore(q2, row.f2, normalizer);
       if (f2_score >= threshold) {
         matched = true;
       }
@@ -71,7 +73,7 @@ export function anchorMatch(
     // 情况2: f2 完全匹配，f1 相似度 >= threshold
     else if (row.f2 === q2) {
       f2_score = 1.0;
-      f1_score = singleFieldScore(q1, row.f1);
+      f1_score = singleFieldScore(q1, row.f1, normalizer);
       if (f1_score >= threshold) {
         matched = true;
       }
@@ -92,13 +94,15 @@ export function anchorMatch(
  * 策略3: Recall+Rank（召回+排序）
  * 通过倒排索引召回候选，混合打分，返回 TopK
  *
+ * @param normalizer - 可选的归一化函数
  * @returns TopK 候选数组
  */
 export function recallAndRank(
   q1: string,
   q2: string,
   index: InvertedIndex,
-  topK = 3
+  topK = 3,
+  normalizer?: Normalizer
 ): { candidates: ScoredCandidate[]; recalledCount: number } {
   // 1. 召回候选 ID
   const rowIds = recallByBothFields(q1, q2, index.inverted, index.meta.ngram_size);
@@ -107,7 +111,7 @@ export function recallAndRank(
   const candidates = lookupRows(rowIds, index.rows);
 
   // 3. 打分并排序
-  const topCandidates = scoreAndRank(q1, q2, candidates, topK);
+  const topCandidates = scoreAndRank(q1, q2, candidates, topK, normalizer);
 
   return {
     candidates: topCandidates,
@@ -124,13 +128,15 @@ export function recallAndRank(
  *
  * @param anchorThreshold - Anchor 策略的相似度阈值（默认 0.6）
  * @param topK - 返回候选数（默认 3）
+ * @param normalizer - 可选的归一化函数，用于相似度计算前的字符串预处理
  */
 export function match(
   q1: string,
   q2: string,
   index: InvertedIndex,
   anchorThreshold = 0.6,
-  topK = 3
+  topK = 3,
+  normalizer?: Normalizer
 ): MatchResult {
   // 策略1: Fast-Exact
   const exactMatch = fastExactMatch(q1, q2, index);
@@ -143,7 +149,7 @@ export function match(
   }
 
   // 策略2: Anchor
-  const anchorMatches = anchorMatch(q1, q2, index, anchorThreshold, topK);
+  const anchorMatches = anchorMatch(q1, q2, index, anchorThreshold, topK, normalizer);
   if (anchorMatches.length > 0) {
     return {
       mode: 'anchor',
@@ -153,7 +159,7 @@ export function match(
   }
 
   // 策略3: Recall+Rank
-  const { candidates, recalledCount } = recallAndRank(q1, q2, index, topK);
+  const { candidates, recalledCount } = recallAndRank(q1, q2, index, topK, normalizer);
   return {
     mode: 'recall',
     candidates,

@@ -1,6 +1,7 @@
 {
-  "path": "configs/v0.labs/f6b7160f",
+  "path": "configs/v0.labs/958582ab",
   "version": "v0.labs",
-  "sha": "f6b7160f",
-  "created_at": "20251111"
+  "sha": "958582ab",
+  "created_at": "20251112",
+  "note": "P0-1: Enhanced punctuation normalization (full-width/half-width conversion)"
 }

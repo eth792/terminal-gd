@@ -3,7 +3,7 @@
  * 对召回的候选进行打分和排序
  */
 import type { DbRow } from '../indexer/types.js';
-import { hybridScore, singleFieldScore } from './similarity.js';
+import { hybridScore, singleFieldScore, type Normalizer } from './similarity.js';
 
 export interface ScoredCandidate {
   row: DbRow;
@@ -18,17 +18,19 @@ export interface ScoredCandidate {
  * @param q1 - 查询字段1（supplier）
  * @param q2 - 查询字段2（project）
  * @param candidates - 候选行数组
+ * @param normalizer - 可选的归一化函数
  * @returns 打分后的候选数组
  */
 export function scoreCandidates(
   q1: string,
   q2: string,
-  candidates: DbRow[]
+  candidates: DbRow[],
+  normalizer?: Normalizer
 ): ScoredCandidate[] {
   return candidates.map(row => {
-    const f1_score = singleFieldScore(q1, row.f1);
-    const f2_score = singleFieldScore(q2, row.f2);
-    const score = hybridScore(q1, q2, row.f1, row.f2);
+    const f1_score = singleFieldScore(q1, row.f1, normalizer);
+    const f2_score = singleFieldScore(q2, row.f2, normalizer);
+    const score = hybridScore(q1, q2, row.f1, row.f2, 0.5, normalizer);
 
     return {
       row,
@@ -64,14 +66,16 @@ export function rankCandidates(
  * @param q2 - 查询字段2
  * @param candidates - 候选行数组
  * @param topK - 返回前 K 个结果
+ * @param normalizer - 可选的归一化函数
  * @returns TopK 候选数组（已打分并排序）
  */
 export function scoreAndRank(
   q1: string,
   q2: string,
   candidates: DbRow[],
-  topK = 3
+  topK = 3,
+  normalizer?: Normalizer
 ): ScoredCandidate[] {
-  const scored = scoreCandidates(q1, q2, candidates);
+  const scored = scoreCandidates(q1, q2, candidates, normalizer);
   return rankCandidates(scored, topK);
 }

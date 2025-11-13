@@ -12,6 +12,7 @@ import type { ScoredCandidate } from './match/rank.js';
 import { bucketize, type BucketConfig } from './bucket/bucketize.js';
 import type { FailReason, BucketType } from './bucket/reasons.js';
 import { logger } from './util/log.js';
+import { normalize } from './normalize/pipeline.js';
 
 /**
  * 单个 OCR 文件的匹配结果
@@ -94,11 +95,16 @@ function postProcessFields(rawSupplier: string, rawProject: string): PostProcess
   // ========== 规则 2：工程名称 - 移除行政前缀和单字"司"残留 ==========
 
   // 2.1 移除"项目管理单位"等行政前缀（OCR 中的噪声）
+  // 注意: 支持全角/半角冒号混用（OCR 文本可能包含任一种）
   const adminPrefixes = [
     '项目管理单位：客户服务中心市场及大客户服务室',
+    '项目管理单位:客户服务中心市场及大客户服务室',  // 半角冒号版本
     '项目管理单位：运维检修部工程名称：',
+    '项目管理单位:运维检修部工程名称:',              // 半角冒号版本
     '项目管理单位：检修分公司综合室工程名称：',
+    '项目管理单位:检修分公司综合室工程名称:',        // 半角冒号版本
     '项目管理单位：',
+    '项目管理单位:',                                // 半角冒号版本
   ];
 
   for (const prefix of adminPrefixes) {
@@ -170,8 +176,11 @@ export async function matchOcrFile(
     }
   }
 
-  // 3. 匹配（使用清洗后的字段）
-  const matchResult = match(cleaned.supplier, cleaned.project, index, 0.6, 3);
+  // 3. 匹配（使用清洗后的字段，传入归一化函数）
+  // 创建归一化函数闭包，捕获 config.normalize
+  const normalizer = (text: string) => normalize(text, config.normalize);
+
+  const matchResult = match(cleaned.supplier, cleaned.project, index, 0.6, 3, normalizer);
 
   logger.info(
     'match.match',
