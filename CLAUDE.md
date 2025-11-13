@@ -92,6 +92,258 @@ cat packages/ocr-match-core/src/bucket/bucketize.ts
 
 ---
 
+## 📋 版本发布工作流（必须遵循）
+
+**⚠️ 重要提示**: 每次实施新版本时，必须按以下流程完整执行，确保文档与代码同步更新。
+
+### 阶段 0: 版本规划
+
+**目标**: 明确本次版本要做什么、预期效果如何
+
+**必须完成**：
+- [ ] 在 `analysis/current/` 创建实施计划文档（如 `v0.1.X_plan.md`）
+- [ ] 明确优化目标、技术方案、预期 KPI
+- [ ] 在 `docs/PROJECT_STATUS.md` 中标记当前阶段为 "🔥 进行中"
+
+**输出产物**：
+- `analysis/current/vX.Y.Z_plan.md` - 详细实施计划
+
+---
+
+### 阶段 1: 代码实施
+
+**目标**: 完成代码变更和功能实现
+
+**必须完成**：
+- [ ] 修改核心代码（`packages/ocr-match-core/src/`）
+- [ ] 构建项目（`pnpm -F ./packages/ocr-match-core build`）
+- [ ] 本地验证（单个样本快速测试）
+
+**输出产物**：
+- 修改的 `.ts` 文件
+- 编译后的 `dist/` 文件
+
+---
+
+### 阶段 2: 完整测试
+
+**目标**: 在完整数据集上验证效果
+
+**必须完成**：
+- [ ] 运行完整测试（222个样本）
+- [ ] 生成运行包（`runs/run_vX.Y.Z_fix_YYYYMMDD_HHMMSS/`）
+- [ ] 确认 `summary.md` 和 `results.csv` 生成成功
+- [ ] 记录运行包 ID
+
+**输出产物**：
+- `runs/run_vX.Y.Z_fix_YYYYMMDD_HHMMSS/` - 完整运行包
+
+---
+
+### 阶段 3: 文档更新（核心！不可遗漏）
+
+**目标**: 确保所有文档反映最新实施情况
+
+#### 3.1 创建测试报告
+
+**必须完成**：
+- [ ] 在 `analysis/vX.Y.Z/` 创建实测报告（如 `vX.Y.Z_实测报告.md`）
+- [ ] 包含 KPI 对比、代码变更、Bug 记录、下一步建议
+
+**模板结构**：
+```markdown
+# vX.Y.Z 实测报告
+
+## 执行总结
+- 实施内容
+- 核心 KPI 对比
+
+## 正面成果
+- 改善数据
+
+## 发现的问题
+- 问题分析
+
+## 代码变更记录
+- 具体修改
+
+## 下一步行动建议
+- 优化方向
+```
+
+#### 3.2 更新 implementation_record.md
+
+**必须完成**：
+- [ ] 在 `docs/implementation_record.md` **顶部**添加新版本条目
+- [ ] 包含：版本号、日期、代码变更、测试结果、技术洞察
+
+**检查点**：
+- ✅ 新版本条目在文件最上方
+- ✅ 包含完整的测试结果表格
+- ✅ 代码变更包含文件路径和行号
+- ✅ 更新"关键指标演进"表格
+
+#### 3.3 更新 PROJECT_STATUS.md
+
+**必须完成**：
+- [ ] 更新顶部元数据（最后更新时间、当前版本、下一版本）
+- [ ] 更新"核心指标"表格（当前 KPI 数值）
+- [ ] 在"版本历史"表格添加新版本行
+- [ ] 移动路线图中的阶段（完成的阶段从"进行中"移至"已完成"）
+- [ ] 更新"待解决的核心问题"（如有新发现）
+
+**检查点**：
+- ✅ 日期是今天
+- ✅ 当前版本号正确
+- ✅ KPI 数值与测试运行包一致
+- ✅ 路线图阶段状态正确
+
+---
+
+### 阶段 4: Git 提交
+
+**目标**: 将所有变更提交到版本控制
+
+**必须完成**：
+- [ ] 确认所有代码和文档文件已暂存
+- [ ] 创建规范的 commit message（参考 Git Safety Protocol）
+- [ ] 验证 commit 包含所有必需文件
+
+**Commit Message 模板**：
+```
+feat(ocr-core): [简短描述] (vX.Y.Z)
+
+[详细说明本次优化内容]
+
+**Changes**:
+- [变更1]
+- [变更2]
+
+**Results** (222 samples):
+- Exact: X → Y (+Z, +W%)
+- [其他 KPI 变化]
+
+**Bug Fixed** (if any):
+- [修复的 Bug]
+
+**Documentation**:
+- [文档更新说明]
+
+Run ID: run_vX.Y.Z_fix_YYYYMMDD_HHMMSS
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**必须包含的文件**：
+- [ ] 修改的源代码文件（`packages/ocr-match-core/src/`）
+- [ ] `docs/implementation_record.md`
+- [ ] `docs/PROJECT_STATUS.md`
+- [ ] `analysis/vX.Y.Z/` 新建的分析报告
+- [ ] `analysis/current/` 的计划文档（如需移动到版本目录）
+
+---
+
+### 阶段 5: 更新 CLAUDE.md（闭环！）
+
+**目标**: 更新本文件顶部的"快速状态恢复"章节，确保新 session 能看到最新信息
+
+**必须完成**：
+- [ ] 更新"最后更新"日期
+- [ ] 更新"当前版本"为刚发布的版本
+- [ ] 更新"下一版本"为计划中的下一个版本
+- [ ] 更新"核心 KPI"表格（使用最新数值）
+- [ ] 更新"最近完成的工作"章节：
+  - 实施日期
+  - Git Commit ID
+  - 代码变更文件
+  - 成果数据
+  - 测试运行包 ID
+- [ ] 更新"下一步计划"章节（基于实测报告的建议）
+- [ ] 如有新的技术决策，添加到"关键技术决策记录"
+
+**创建独立的 Git Commit**：
+```bash
+git add CLAUDE.md
+git commit -m "docs: update CLAUDE.md quick recovery section for vX.Y.Z
+
+Updated status dashboard with latest vX.Y.Z results and next steps planning.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### ✅ 完整 Checklist（每次发布前核对）
+
+**代码与测试**：
+- [ ] 代码已实施并构建成功
+- [ ] 完整测试已运行（222 样本）
+- [ ] 运行包已生成并验证
+
+**文档更新**（关键！）：
+- [ ] `analysis/vX.Y.Z/vX.Y.Z_实测报告.md` 已创建
+- [ ] `docs/implementation_record.md` 已更新（顶部添加新版本）
+- [ ] `docs/PROJECT_STATUS.md` 已更新（5个位置）
+  - [ ] 顶部元数据
+  - [ ] 核心指标表格
+  - [ ] 版本历史表格
+  - [ ] 路线图阶段状态
+  - [ ] 待解决问题列表
+- [ ] `analysis/current/` 计划文档已处理（保留或移动到版本目录）
+
+**Git 提交**：
+- [ ] 主 commit 已创建（包含代码 + 文档）
+- [ ] Commit message 遵循规范
+- [ ] 所有必需文件已包含在 commit 中
+
+**CLAUDE.md 更新**（闭环！）：
+- [ ] CLAUDE.md 顶部"快速状态恢复"章节已更新（7个位置）
+  - [ ] 最后更新日期
+  - [ ] 当前版本
+  - [ ] 下一版本
+  - [ ] 核心 KPI 表格
+  - [ ] 最近完成的工作
+  - [ ] 下一步计划
+  - [ ] 关键技术决策记录
+- [ ] CLAUDE.md 更新已创建独立 commit
+
+**验证**：
+- [ ] 运行 `git log --oneline -2` 确认两个 commit 都已创建
+- [ ] 运行 `cat CLAUDE.md | head -50` 确认快速恢复章节已更新
+- [ ] 运行 `cat docs/PROJECT_STATUS.md | head -30` 确认状态文档已更新
+
+---
+
+### 🚨 常见遗漏提醒
+
+**最容易忘记的步骤**（请特别注意！）：
+
+1. **忘记更新 PROJECT_STATUS.md 的路线图阶段**
+   - 症状：阶段还停留在"进行中"，实际已完成
+   - 修复：移动对应阶段到"已完成"，更新"进行中"为下一阶段
+
+2. **忘记更新 CLAUDE.md 顶部章节**
+   - 症状：新 session 看到的还是旧版本信息
+   - 修复：按"阶段 5"完整执行 CLAUDE.md 更新
+
+3. **implementation_record.md 新版本不在顶部**
+   - 症状：版本历史顺序混乱
+   - 修复：确保新版本条目插入到文件最上方
+
+4. **测试运行包 ID 没有记录**
+   - 症状：无法追溯测试结果
+   - 修复：在所有文档中明确标注运行包路径
+
+5. **Git commit 缺少文档文件**
+   - 症状：代码提交了，文档没提交
+   - 修复：提交前运行 `git status` 仔细检查
+
+---
+
 ## 核心架构理念
 
 这个 monorepo 遵循"两个项目、一套真理"的设计哲学：
