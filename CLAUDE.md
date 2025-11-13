@@ -120,12 +120,80 @@ cat packages/ocr-match-core/src/bucket/bucketize.ts
 **目标**: 明确本次版本要做什么、预期效果如何
 
 **必须完成**：
-- [ ] 在 `analysis/current/` 创建实施计划文档（如 `v0.1.X_plan.md`）
-- [ ] 明确优化目标、技术方案、预期 KPI
+- [ ] 在 `analysis/vX.Y.Z/` 创建实施计划文档（如 `vX.Y.Z_plan.md`）
+- [ ] 明确优化目标、技术方案、预期 KPI、风险评估
+- [ ] **区分"核心任务"和"附加任务"**：
+  - **核心任务**：必须完成，否则不发版
+  - **附加任务**：可延后到下一版本
 - [ ] 在 `docs/PROJECT_STATUS.md` 中标记当前阶段为 "🔥 进行中"
 
+**规划文档模板结构**：
+```markdown
+# vX.Y.Z 实施计划
+
+## 版本定位
+- 简短描述本次版本的核心目标
+
+## 任务列表
+
+### 核心任务（必须完成，否则不发版）
+- [ ] 任务1
+- [ ] 任务2
+
+### 附加任务（可延后）
+- [ ] 任务3
+
+## 技术方案
+- 详细的实施方案
+
+## 预期效果
+- KPI 目标
+- 预期收益
+
+## 风险评估
+- 可能的风险点
+```
+
 **输出产物**：
-- `analysis/current/vX.Y.Z_plan.md` - 详细实施计划
+- `analysis/vX.Y.Z/vX.Y.Z_plan.md` - 详细实施计划
+
+---
+
+### 🆕 阶段 0.5: 提交规划文档
+
+**目标**: 规划完成后，先 commit 规划文档，作为"版本契约"
+
+**必须完成**：
+- [ ] 确认规划文档已创建且内容完整
+- [ ] 确认 `docs/PROJECT_STATUS.md` 已更新（路线图标记"进行中"）
+- [ ] 提交规划文档到 Git（使用 `plan:` 前缀）
+
+**Commit Message 模板**：
+```
+plan: vX.Y.Z [简短描述]
+
+[规划详情]
+
+**Planned Changes**:
+- [计划变更1]
+- [计划变更2]
+
+**Expected Results**:
+- [预期效果]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**必须包含的文件**：
+- [ ] `analysis/vX.Y.Z/vX.Y.Z_plan.md`
+- [ ] `docs/PROJECT_STATUS.md`
+
+**价值**：
+- ✅ 规划可追溯（Git 历史有明确的"规划 commit"）
+- ✅ 实施前有检查点（可以 review 规划，发现问题可以及时调整）
+- ✅ 多人协作时，其他人可以看到"接下来要做什么"
 
 ---
 
@@ -141,6 +209,74 @@ cat packages/ocr-match-core/src/bucket/bucketize.ts
 **输出产物**：
 - 修改的 `.ts` 文件
 - 编译后的 `dist/` 文件
+
+**🔄 如果发现问题需要延后（重要！）**：
+
+当实施过程中发现某些任务无法完成或不适合在本版本完成时，按以下流程处理：
+
+#### Step 1: 在规划文档中标记"实施调整"
+
+在 `analysis/vX.Y.Z/vX.Y.Z_plan.md` 末尾添加：
+
+```markdown
+---
+
+## 🔄 实施调整（Deferred Items）
+
+**调整日期**: YYYY-MM-DD
+
+### 延后到 vX.Y.Z+1 的任务
+
+**任务**: [任务名称]
+
+**原因**：
+- [为什么延后]
+- [当前状态]
+
+**预期影响**：
+- vX.Y.Z 预期收益：[调整后的预期]
+- vX.Y.Z+1 预期收益：[延后任务的预期]
+
+**下一步**：
+- [vX.Y.Z 完成后的行动计划]
+```
+
+#### Step 2: 更新 PROJECT_STATUS.md
+
+在 `docs/PROJECT_STATUS.md` 的"下一步计划"章节中明确延后的任务：
+
+```markdown
+### 下一步计划（vX.Y.Z+1 - [延后任务名称]）
+
+**当前阶段**: Phase X ([任务名称]) - **下一阶段** 🔥
+
+**任务来源**: 从 vX.Y.Z 延后
+
+**P1 级任务**：
+- [ ] [延后的具体任务]
+
+**预期成果**: [预期效果]
+```
+
+#### Step 3: 提交调整后的规划文档
+
+创建一个单独的 commit：
+
+```bash
+git add analysis/vX.Y.Z/vX.Y.Z_plan.md docs/PROJECT_STATUS.md
+git commit -m "plan: adjust vX.Y.Z scope (defer [任务名称] to vX.Y.Z+1)
+
+[调整原因说明]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**版本号语义规则**：
+- ✅ 版本号对应"已完成的功能"，不对应"最初的规划"
+- ✅ 如果核心任务完成，附加任务延后 → 仍然发布本版本号
+- ✅ 如果核心任务无法完成 → 重新评估是否发版
 
 ---
 
