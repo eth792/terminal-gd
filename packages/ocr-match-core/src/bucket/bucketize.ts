@@ -46,28 +46,40 @@ export function bucketize(
     return { bucket: 'fail', reason: FailReason.NO_CANDIDATES };
   }
 
-  // 规则3: 单字段相似度过低 → fail
-  if (top1.f1_score < config.minFieldSim) {
-    return { bucket: 'fail', reason: FailReason.FIELD_SIM_LOW_SUPPLIER };
-  }
+  // 规则3: 单字段相似度过低 → fail (优先检查project)
   if (top1.f2_score < config.minFieldSim) {
     return { bucket: 'fail', reason: FailReason.FIELD_SIM_LOW_PROJECT };
   }
 
-  // 规则4: 高置信度旁路 - 极高分数直接通过，忽略 delta
+  // 规则3.5: 项目高度匹配，供应商可放宽 → review
+  // "项目优先"策略：同一项目可能由多个供应商分批供货
+  // 当项目匹配度很高时，允许供应商有差异，交由人工审核
+  // ⚠️ 关键：只捕获f1_score在[0.40, 0.60)区间的边界案例
+  // f1_score >= 0.60的案例继续向下，可能进入高置信度旁路或自动通过
+  if (top1.f2_score >= 0.80 && top1.f1_score >= 0.40 && top1.f1_score < 0.60) {
+    return { bucket: 'review', reason: FailReason.SUPPLIER_DIFF_SAME_PROJECT };
+  }
+
+  // 规则4: 供应商相似度过低 → fail
+  if (top1.f1_score < config.minFieldSim) {
+    return { bucket: 'fail', reason: FailReason.FIELD_SIM_LOW_SUPPLIER };
+  }
+
+  // 规则5: 高置信度旁路 - 极高分数直接通过，忽略 delta
   // 修复设计缺陷：避免高质量匹配被 delta 检查误判为 review
-  if (top1.score >= 0.90 && top1.f1_score >= 0.80 && top1.f2_score >= 0.80) {
+  // v0.1.5: 降低阈值以救回边界案例（score 0.90→0.85, f2_score 0.80→0.75）
+  if (top1.score >= 0.85 && top1.f1_score >= 0.80 && top1.f2_score >= 0.75) {
     return { bucket: 'exact', reason: null };
   }
 
-  // 规则5: Top1-Top2 差值过小 → review
+  // 规则6: Top1-Top2 差值过小 → review
   const top2 = candidates[1];
   const delta = top2 ? top1.score - top2.score : 1.0; // 只有1个候选时，delta=1.0
   if (delta < config.minDeltaTop) {
     return { bucket: 'review', reason: FailReason.DELTA_TOO_SMALL };
   }
 
-  // 规则6: 自动通过检查
+  // 规则7: 自动通过检查
   if (
     top1.score >= config.autoPass &&
     top1.f1_score >= config.minFieldSim &&

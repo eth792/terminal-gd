@@ -16,6 +16,7 @@ export enum FailReason {
   // 分桶阶段（需要人工审核）
   DELTA_TOO_SMALL = 'DELTA_TOO_SMALL',               // Top1-Top2 差值过小
   SCORE_BELOW_AUTO_PASS = 'SCORE_BELOW_AUTO_PASS',   // 分数低于自动通过阈值
+  SUPPLIER_DIFF_SAME_PROJECT = 'SUPPLIER_DIFF_SAME_PROJECT', // 供应商不同但项目高度匹配
 }
 
 /**
