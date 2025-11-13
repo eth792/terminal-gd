@@ -34,6 +34,13 @@ interface MatchOcrArgs {
   logLevel?: string;        // 日志级别
 }
 
+/**
+ * 生成标准时间戳：YYYYMMDD_HH_MM（分钟级精度，时和分之间有下划线）
+ */
+function generateTimestamp(): string {
+  return dayjs().format('YYYYMMDD_HH_mm');
+}
+
 async function main() {
   const argv = await yargs(hideBin(process.argv))
     .command(
@@ -54,7 +61,7 @@ async function main() {
           .option('out', {
             type: 'string',
             demandOption: true,
-            description: 'Output directory for run bundle',
+            description: 'Output directory for run bundle (use {timestamp} for auto timestamp)',
           })
           .option('config', {
             type: 'string',
@@ -135,10 +142,15 @@ async function main() {
 
   const startTime = Date.now();
 
+  // 替换 {timestamp} 或 {ts} 占位符为标准时间戳
+  const outputDir = args.out
+    .replace(/\{timestamp\}/g, generateTimestamp())
+    .replace(/\{ts\}/g, generateTimestamp());
+
   logger.info('cli.match-ocr', `Starting OCR matching...`);
   logger.info('cli.match-ocr', `OCR dir: ${args.ocr}`);
   logger.info('cli.match-ocr', `Index: ${args.index}`);
-  logger.info('cli.match-ocr', `Output: ${args.out}`);
+  logger.info('cli.match-ocr', `Output: ${outputDir}`);
 
   try {
     // 1. 加载配置
@@ -227,11 +239,11 @@ async function main() {
     );
 
     // 6. 生成运行包
-    const runId = path.basename(args.out);
+    const runId = path.basename(outputDir);
 
     const bundleConfig = {
       run_id: runId,
-      out_dir: args.out,
+      out_dir: outputDir,
       ocr_dir: args.ocr,
       index_file: args.index,
       config_path: config.root,
@@ -254,7 +266,7 @@ async function main() {
     });
 
     // 7. 写入 JSONL 日志
-    const jsonlLogger = new JsonlLogger(args.out);
+    const jsonlLogger = new JsonlLogger(outputDir);
     await jsonlLogger.writeLog(
       'INFO',
       'cli.match-ocr',
@@ -275,7 +287,7 @@ async function main() {
 
     console.log('\n✅ OCR matching completed!');
     console.log(`   Run ID: ${runId}`);
-    console.log(`   Output: ${args.out}`);
+    console.log(`   Output: ${outputDir}`);
     console.log(`   Total files: ${results.length}`);
     console.log(`   ✅ Exact (auto-pass): ${exact} (${((exact / results.length) * 100).toFixed(1)}%)`);
     console.log(`   ⚠️  Review (needs check): ${review} (${((review / results.length) * 100).toFixed(1)}%)`);
