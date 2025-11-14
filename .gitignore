@@ -21,5 +21,25 @@ runs/**
 # 测试配置（不提交）
 configs/v0.test/
 
-.spec-workflow/
 .vscode/
+
+
+# .spec-workflow MCP Server - Selective Tracking
+# ✅ Track: specs/, templates/, steering/ (knowledge assets)
+# ❌ Exclude: approvals/, .cache/, logs/, tmp/, *.backup (runtime/temp files)
+
+# Runtime/temp files (exclude from git)
+.spec-workflow/approvals/
+.spec-workflow/.cache/
+.spec-workflow/logs/
+.spec-workflow/tmp/
+.spec-workflow/specs/**/*.backup
+.spec-workflow/specs/**/*.log
+.spec-workflow/specs/**/.snapshots
+.spec-workflow/**/.DS_Store
+.spec-workflow/**/*.swp
+.spec-workflow/**/*.swo
+.spec-workflow/**/*~
+
+# Optional: Uncomment to exclude archive (if it contains garbage)
+# .spec-workflow/archive/
