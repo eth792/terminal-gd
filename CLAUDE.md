@@ -4,6 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## ⚠️ 强制规则（违反 = 项目失败）
+
+### Rule 1: 单次变更原则
+**禁止**同时修改多处代码。每次只改一个文件的一个函数。
+
+**正确做法**:
+- ✅ v0.1.8a: 只修复 extractor.ts 行级扫描 bug
+- ✅ v0.1.8b: 只添加 noise_words 截断验证
+
+**错误做法**:
+- ❌ v0.1.7: 同时改 extractor.ts + label_alias.json + 4 处逻辑 → 100% 失败率
+
+### Rule 2: 失败立即停止
+测试失败 → 立即回滚 → 分析原因 → 单独修复
+**禁止**在失败基础上继续叠加修复。
+
+### Rule 3: Context 预算
+每次实施预算 15k tokens。超出 → 保存方案到临时文档 → 新 session 继续。
+
+---
+
 ## 🚀 快速状态恢复（新 Session 必读）
 
 **最后更新**: 2025-11-13 22:15
