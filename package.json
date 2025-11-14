@@ -1,11 +1,14 @@
 {
   "name": "ocr-match-record",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev:vite": "pnpm -F rpa-automation-tool dev:vite"
+    "dev:vite": "pnpm -F rpa-automation-tool dev:vite",
+    "update-docs": "node scripts/update-docs.js",
+    "release": "node scripts/release.js"
   }
 }
