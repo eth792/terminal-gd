@@ -7,6 +7,57 @@
 
 ---
 
+## 🚀 Quick Start for New Sessions
+
+**目的**: 快速恢复项目上下文，找到需要的信息
+
+### Step 1: Read This File
+**当前位置**: `docs/PROJECT_STATUS.md` - 项目状态仪表盘
+
+**核心内容**:
+- ✅ 当前 KPI 和版本状态（见下方"核心指标"表格）
+- ✅ 最近完成的工作和失败尝试（见"项目路线图"）
+- ✅ 下一步计划和优先级（见"进行中"和"待完成"）
+
+### Step 2: Check Related Docs
+
+**深入了解时，按需阅读**：
+
+- **版本历史和技术洞察** → [implementation_record.md](implementation_record.md)
+  - 完整版本演进记录（v0.1.0 → 当前版本）
+  - 每个版本的代码变更、测试结果、技术决策
+  - 关键指标演进图表
+
+- **版本发布流程** → [../analysis/docs-flow-automation/RELEASE_WORKFLOW.md](../analysis/docs-flow-automation/RELEASE_WORKFLOW.md)
+  - 阶段 0-5 完整发布流程
+  - 文档更新 Checklist
+  - 常见遗漏提醒
+
+- **技术决策记录** → [TECHNICAL_DECISIONS.md](TECHNICAL_DECISIONS.md)
+  - 核心架构决策（Monorepo/配置版本化/运行包结构）
+  - 设计约束和原因
+  - 版本演进教训
+
+### Step 3: Verify Environment
+
+**环境检查**（如需执行代码）：
+
+```bash
+# 1. 检查 Git 分支
+git branch --show-current
+
+# 2. 查看最新代码变更
+git log --oneline -3
+
+# 3. 检查当前版本的核心代码
+cat packages/ocr-match-core/src/bucket/bucketize.ts | head -100
+
+# 4. 查看最新运行包（如有）
+ls -lt runs/ | head -5
+```
+
+---
+
 ## 📊 当前状态快照
 
 ### 核心指标（v0.1.6 实际）
