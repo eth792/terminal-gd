@@ -4,8 +4,9 @@
  *
  * 功能：从 git log 和 runs/ 提取信息，自动更新项目文档
  * - implementation_record.md（顶部插入新版本条目）
- * - PROJECT_STATUS.md（更新 KPI 表格）
- * - CLAUDE.md（更新快速恢复章节）
+ * - PROJECT_STATUS.md（更新 KPI 表格和元数据）
+ *
+ * ⚠️ CLAUDE.md 简化后：不再自动更新（仅包含静态 AI meta-instructions）
  *
  * 使用方式：npm run update-docs
  */
@@ -413,41 +414,21 @@ async function updateProjectStatus(config) {
 }
 
 /**
- * 更新 CLAUDE.md 的"快速状态恢复"章节（只更新关键指标）
+ * DEPRECATED: 更新 CLAUDE.md（已简化为静态AI指令，不再自动更新）
  *
- * @param {Object} config - 配置对象
- * @param {string} config.version - 版本号（如 'v0.1.7'）
- * @param {string} config.date - 日期（如 '2025-11-14'）
- * @param {string} config.title - 版本标题（如 '提取逻辑修复'）
- * @param {string} config.runId - 运行包 ID（如 'run_v0.1.7_fix_20251114_123456'）
- * @param {string} config.nextVersion - 下一版本号（如 'v0.1.8'，可选）
- * @returns {Promise<string>} 更新后的文档内容
- * @throws {Error} 文件读取失败或格式不匹配时抛出错误
+ * ⚠️ CLAUDE.md 简化后（2025-11-15）：
+ * - 现在只包含静态 AI meta-instructions（~200 lines）
+ * - 所有项目数据已迁移至 docs/PROJECT_STATUS.md
+ * - 不再包含"快速状态恢复"等自动生成章节
+ * - 此函数保留为 no-op（保持 API 兼容性）
  *
- * 注意：此函数采用保守策略，只更新数值型指标，保留所有手动填写的描述性内容
+ * @param {Object} config - 配置对象（已弃用，保留为兼容性参数）
+ * @returns {Promise<string>} 返回当前 CLAUDE.md 内容（不做任何修改）
+ * @throws {Error} 文件读取失败时抛出错误
  */
 async function updateClaudeMd(config) {
-  const { version, date, title, runId, nextVersion, specName } = config;
-
-  // 步骤 1: 从 runs/{runId}/summary.md 提取 KPI
-  console.log(`📊 Extracting KPIs from ${runId}/summary.md...`);
-  const summaryPath = `runs/${runId}/summary.md`;
-
-  let summaryContent;
-  try {
-    summaryContent = await fs.readFile(summaryPath, 'utf-8');
-  } catch (error) {
-    throw new Error(`Failed to read summary.md: ${summaryPath}\n${error.message}`);
-  }
-
-  const exact = safeExtractKPI(summaryContent, 'exact');
-  const review = safeExtractKPI(summaryContent, 'review');
-  const fail = safeExtractKPI(summaryContent, 'fail');
-
-  console.log(`  ✓ Extracted: Exact=${exact.count} (${exact.percent}%), Review=${review.count} (${review.percent}%), Fail=${fail.count} (${fail.percent}%)`);
-
-  // 步骤 2: 读取现有 CLAUDE.md
-  console.log('📖 Reading existing CLAUDE.md...');
+  // No-op: CLAUDE.md is now static AI instructions, no automatic updates needed
+  console.log('📖 Reading CLAUDE.md (no updates - static AI instructions)...');
   const claudePath = 'CLAUDE.md';
 
   let content;
@@ -457,108 +438,8 @@ async function updateClaudeMd(config) {
     throw new Error(`Failed to read CLAUDE.md: ${claudePath}\n${error.message}`);
   }
 
-  // 步骤 3: 更新顶部元数据（快速状态恢复章节）
-  console.log('📝 Updating quick recovery metadata...');
-
-  // 格式化当前日期和时间（如 "2025-11-14 09:15"）
-  const now = new Date();
-  const dateTime = `${now.toISOString().split('T')[0]} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-  // 更新"最后更新"行
-  content = content.replace(
-    /^(\*\*最后更新\*\*): .+$/m,
-    `$1: ${dateTime}`
-  );
-
-  // 更新"当前版本"行
-  content = content.replace(
-    /^(\*\*当前版本\*\*): .+$/m,
-    `$1: ${version} (${title})`
-  );
-
-  // 更新"下一版本"行（如果提供了 nextVersion）
-  if (nextVersion) {
-    content = content.replace(
-      /^(\*\*下一版本\*\*): .+$/m,
-      `$1: ${nextVersion} - 计划中`
-    );
-  }
-
-  console.log(`  ✓ Updated metadata: dateTime=${dateTime}, version=${version}`);
-
-  // 步骤 4: 更新核心 KPI 表格
-  console.log('📊 Updating KPI table in quick recovery section...');
-
-  // 更新核心 KPI 表格标题（带版本号）
-  content = content.replace(
-    /^### 核心 KPI（v[\d.]+）$/m,
-    `### 核心 KPI（${version}）`
-  );
-
-  // 更新自动通过率（快速恢复章节中的格式）
-  content = content.replace(
-    /(\| \*\*自动通过率\*\* \| \*\*)[^*]+(\*\* \|)/,
-    `$1${exact.percent}%$2`
-  );
-
-  // 更新 Exact（快速恢复章节中的格式）
-  content = content.replace(
-    /(\| Exact \| )[\d \/]+( \|)/,
-    `$1${exact.count} / 222$2`
-  );
-
-  // 更新 Review
-  content = content.replace(
-    /(\| Review \| )[\d \/]+( \|)/,
-    `$1${review.count} / 222$2`
-  );
-
-  // 更新 Fail
-  content = content.replace(
-    /(\| Fail \| )[\d \/]+( \|)/,
-    `$1${fail.count} / 222$2`
-  );
-
-  console.log(`  ✓ Updated KPI table with latest metrics`);
-
-  // 步骤 5: 更新"最近完成的工作"章节的基本信息
-  console.log('📝 Updating recent work section...');
-
-  // 更新章节标题（带版本号）
-  content = content.replace(
-    /^### 最近完成的工作（v[\d.]+）$/m,
-    `### 最近完成的工作（${version}）`
-  );
-
-  // 更新实施日期
-  content = content.replace(
-    /^(\*\*实施日期\*\*): .+$/m,
-    `$1: ${date}`
-  );
-
-  // 更新测试运行包（保留原有格式和描述）
-  content = content.replace(
-    /^(\*\*测试运行包\*\*): `runs\/[^`]+`(.*)$/m,
-    `$1: \`runs/${runId}/\`$2`
-  );
-
-  // 步骤 6: 更新"代码变更"小节（如果提供了 specName）
-  if (specName) {
-    console.log('📝 Updating code changes section with spec reference...');
-
-    // 替换"**代码变更**："小节为 spec 引用链接
-    // 匹配从"**代码变更**："到下一个"**"开头的行（跨行匹配）
-    const codeChangesPattern = /(\*\*代码变更\*\*)[：:]\n.*?(?=\n\*\*)/s;
-    const codeChangesReplacement = `$1: 详见 [spec logs](./.spec-workflow/specs/${specName}/)\n`;
-
-    content = content.replace(codeChangesPattern, codeChangesReplacement);
-
-    console.log(`  ✓ Updated code changes section with spec reference`);
-  }
-
-  console.log(`  ✓ Updated recent work section`);
-
-  console.log('\n⚠️  Note: Other sections (code changes, key findings, next steps) need manual update');
+  console.log('  ✓ CLAUDE.md unchanged (contains static AI meta-instructions only)');
+  console.log('  ℹ️  All project data updates are in PROJECT_STATUS.md');
 
   return content;
 }
@@ -612,10 +493,11 @@ async function updateDocs(config) {
     updates.set('docs/PROJECT_STATUS.md', projectStatus);
     console.log('');
 
-    // 1.3 更新 CLAUDE.md
-    console.log('3️⃣  Updating CLAUDE.md...\n');
+    // 1.3 读取 CLAUDE.md（不再更新 - 保持静态AI指令）
+    console.log('3️⃣  Reading CLAUDE.md (static, no updates)...\n');
     const claudeMd = await updateClaudeMd(config);
-    updates.set('CLAUDE.md', claudeMd);
+    // CLAUDE.md现在是静态的，不加入updates（不会被写入）
+    // updates.set('CLAUDE.md', claudeMd); // DEPRECATED: 不再自动更新
     console.log('');
 
     // 步骤 2: 原子性写入所有文档
@@ -637,9 +519,9 @@ async function updateDocs(config) {
 
     console.log('\n⚠️  Next steps:');
     console.log('   1. Review implementation_record.md and fill in [📝 待补充] sections');
-    console.log('   2. Review CLAUDE.md and update code changes, key findings, next steps');
-    console.log('   3. Run git diff to verify all changes');
-    console.log('   4. Create git commit with updated documentation\n');
+    console.log('   2. Run git diff to verify all changes');
+    console.log('   3. Create git commit with updated documentation');
+    console.log('   4. (Optional) Update docs/PROJECT_STATUS.md roadmap if needed\n');
 
   } catch (error) {
     console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
