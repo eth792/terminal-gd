@@ -277,7 +277,7 @@ if (top1.f2_score >= 0.80 && top1.f1_score >= 0.40) {
 #### 相关文档
 
 - **完整报告**: `analysis/v0.1.5/v0.1.5_实测报告.md`
-- **实施计划**: `analysis/current/v0.1.5_plan.md`
+- **实施计划**: `analysis/v0.1.5/plan.md`
 - **运行包**: `runs/run_v0.1.5_fix_20251113_133741/`
 
 #### 技术洞察

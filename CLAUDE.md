@@ -488,7 +488,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - [ ] `docs/implementation_record.md`
 - [ ] `docs/PROJECT_STATUS.md`
 - [ ] `analysis/vX.Y.Z/` 新建的分析报告
-- [ ] `analysis/current/` 的计划文档（如需移动到版本目录）
+- [ ] `analysis/vX.Y.Z/plan.md` 计划文档（如有新建）
 - [ ] `.spec-workflow/specs/{spec-name}/` 实施日志（**如果有 spec 实施**）
 
 ---
@@ -541,7 +541,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
   - [ ] 版本历史表格
   - [ ] 路线图阶段状态
   - [ ] 待解决问题列表
-- [ ] `analysis/current/` 计划文档已处理（保留或移动到版本目录）
+- [ ] `analysis/vX.Y.Z/plan.md` 计划文档已处理（如有新建）
 
 **Git 提交**：
 - [ ] 主 commit 已创建（包含代码 + 文档）

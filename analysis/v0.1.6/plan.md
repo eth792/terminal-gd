@@ -398,7 +398,7 @@ if (top1.f2_score >= 0.75 && top1.f1_score >= 0.40) {
 
 - [ ] `analysis/v0.1.6/v0.1.6_实测报告.md` - 完整测试报告
 - [ ] `analysis/v0.1.6/issues_discovery.md` - 问题记录（已完成）
-- [ ] `analysis/current/v0.1.6_plan.md` - 本文件
+- [ ] `analysis/v0.1.6/plan.md` - 本文件
 - [ ] `docs/implementation_record.md` - 新增 v0.1.6 条目
 - [ ] `docs/PROJECT_STATUS.md` - 更新核心指标和路线图
 - [ ] `CLAUDE.md` - 更新快速状态恢复章节

@@ -355,7 +355,7 @@ pnpm -F ./packages/ocr-match-core match-ocr \
 ### 文档更新
 
 - [ ] `analysis/v0.1.7/v0.1.7_实测报告.md` - 完整测试报告
-- [ ] `analysis/current/v0.1.7_extraction_fix_plan.md` - 本文件
+- [ ] `analysis/v0.1.7/plan.md` - 本文件
 - [ ] `docs/implementation_record.md` - 新增 v0.1.7 条目
 - [ ] `docs/PROJECT_STATUS.md` - 更新核心指标和路线图
 - [ ] `CLAUDE.md` - 更新快速恢复章节

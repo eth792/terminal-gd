@@ -177,7 +177,7 @@ cat docs/PROJECT_STATUS.md
 
 ### 3. 读取详细计划
 ```bash
-cat analysis/current/v0.1.5_plan.md
+cat analysis/v0.1.5/plan.md
 ```
 
 ### 4. 检查最新代码
