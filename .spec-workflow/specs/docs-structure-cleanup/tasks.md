@@ -2,7 +2,7 @@
 
 ## Phase 1: Root Directory Cleanup (Low Risk)
 
-- [-] 1. Move DOCS_FLOW_REDESIGN.md to archived
+- [x] 1. Move DOCS_FLOW_REDESIGN.md to archived
   - File: `DOCS_FLOW_REDESIGN.md` (move to `analysis/archived/`)
   - Use `git mv` to preserve file history
   - Verify root directory only contains README.md and CLAUDE.md after move
@@ -13,7 +13,7 @@
 
 ## Phase 2: Analysis Document Consolidation (Medium Risk)
 
-- [ ] 2. Create docs-flow-automation/archived/ directory
+- [-] 2. Create docs-flow-automation/archived/ directory
   - Directory: `analysis/docs-flow-automation/archived/`
   - Create directory structure for archiving original analysis documents
   - Purpose: Prepare for document consolidation and archival
@@ -21,7 +21,7 @@
   - _Requirements: 2_
   - _Prompt: Implement the task for spec docs-structure-cleanup, first run spec-workflow-guide to get the workflow guide then implement the task: Role: DevOps Engineer with expertise in directory structure management | Task: Create archived/ subdirectory in analysis/docs-flow-automation/ following requirement 2 and existing archived/ directory patterns | Restrictions: Use `mkdir -p` to create directory, ensure it's tracked in git (add .gitkeep if needed), do not move files yet | _Leverage: Existing analysis/archived/ pattern_ | Success: (1) Directory analysis/docs-flow-automation/archived/ exists, (2) Directory is tracked in git, (3) No files moved yet | Instructions: Mark task as in-progress [-], create directory, verify with `ls -la analysis/docs-flow-automation/`, log implementation, mark complete [x]_
 
-- [ ] 3. Merge gitignore analysis documents into GIT_INTEGRATION_GUIDE.md
+- [-] 3. Merge gitignore analysis documents into GIT_INTEGRATION_GUIDE.md
   - Files:
     - Read: `analysis/docs-flow-automation/GITIGNORE_STRATEGY.md`
     - Read: `analysis/docs-flow-automation/COMPLETE_GITIGNORE_GUIDE.md`
@@ -35,7 +35,7 @@
   - _Requirements: 2_
   - _Prompt: Implement the task for spec docs-structure-cleanup, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Technical Writer with expertise in documentation consolidation and markdown | Task: Merge 3 gitignore analysis documents into one comprehensive GIT_INTEGRATION_GUIDE.md (≤15KB) following requirement 2, extracting unique sections and best practices | Restrictions: Must read all 3 source files, combine unique content (no duplication), maintain clarity and structure, target file size ≤15KB, do not delete originals yet | _Leverage: Markdown structure patterns, section organization from existing docs_ | Success: (1) GIT_INTEGRATION_GUIDE.md created with consolidated content, (2) File size ≤15KB, (3) Contains: Problem statement, Solutions, Implementation, Examples sections, (4) No duplicate information, (5) Includes "History" section linking to original 3 docs in archived/ | Instructions: Mark in-progress [-], read all 3 files, create merged document, verify size with `wc -c`, log implementation (show merge strategy used), mark complete [x]_
 
-- [ ] 4. Archive original gitignore documents
+- [-] 4. Archive original gitignore documents
   - Files:
     - Move: `analysis/docs-flow-automation/GITIGNORE_STRATEGY.md` → `archived/`
     - Move: `analysis/docs-flow-automation/COMPLETE_GITIGNORE_GUIDE.md` → `archived/`
@@ -47,7 +47,7 @@
   - _Requirements: 2_
   - _Prompt: Implement the task for spec docs-structure-cleanup, first run spec-workflow-guide to get the workflow guide then implement the task: Role: DevOps Engineer with Git expertise | Task: Move 3 original gitignore documents to archived/ subdirectory following requirement 2 after consolidation (task 3) is complete | Restrictions: Must use `git mv` for each file, verify task 3 completed first (GIT_INTEGRATION_GUIDE.md exists), do not delete files, verify files are still tracked in git after move | _Leverage: Git mv for history preservation_ | Success: (1) All 3 files moved to analysis/docs-flow-automation/archived/, (2) Git history preserved for all files, (3) Only GIT_INTEGRATION_GUIDE.md + archived/ remain in docs-flow-automation/, (4) All files tracked in git | Instructions: Mark in-progress [-], move files with git mv, verify with `ls analysis/docs-flow-automation/` and `git log --follow`, log implementation, mark complete [x]_
 
-- [ ] 5. Archive ARCHITECTURE_REVIEW.md and ULTRATHINK_ANALYSIS.md
+- [-] 5. Archive ARCHITECTURE_REVIEW.md and ULTRATHINK_ANALYSIS.md
   - Files:
     - Move: `analysis/docs-flow-automation/ARCHITECTURE_REVIEW.md` → `archived/`
     - Move: `analysis/docs-flow-automation/ULTRATHINK_ANALYSIS.md` → `archived/`

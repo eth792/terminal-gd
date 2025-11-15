@@ -1,0 +1,236 @@
+# Git Integration Guide for .spec-workflow
+
+> **Consolidated guide**: How to manage .spec-workflow directory in git version control
+
+---
+
+## Problem Statement
+
+The `.spec-workflow/` directory contains both **knowledge assets** (specs, templates, implementation logs) and **runtime data** (approval requests, cache). A blanket `.gitignore` exclusion loses valuable implementation history, while tracking everything pollutes git with temporary files.
+
+**Core Question**: Which parts should be versioned, and which should remain local?
+
+---
+
+## Solution: Selective Tracking Strategy
+
+### Directory Classification
+
+```
+.spec-workflow/
+├── specs/                  ← ✅ Track (spec knowledge base)
+│   ├── requirements.md
+│   ├── design.md
+│   ├── tasks.md
+│   └── Implementation Logs/ ← ✅ Track (AI code discovery)
+│
+├── templates/              ← ✅ Track (reusable templates)
+├── user-templates/         ← ✅ Track (project-specific)
+├── steering/               ← ✅ Track (product.md, tech.md, structure.md)
+│
+├── approvals/              ← ❌ Exclude (MCP runtime data)
+├── .cache/                 ← ❌ Exclude (temporary cache)
+└── *.backup, .snapshots/   ← ❌ Exclude (temporary files)
+```
+
+### Why Track Implementation Logs?
+
+**Critical Value**: Implementation Logs enable AI agents to discover existing code before reimplementing.
+
+**Example Use Case**:
+```bash
+# Before implementing new API endpoint, search existing implementations:
+grep -r "apiEndpoints" .spec-workflow/specs/*/Implementation\ Logs/
+
+# Find existing components to reuse:
+grep -r "components.*React" .spec-workflow/specs/*/Implementation\ Logs/
+```
+
+**Without logs in git**: Future AI sessions lose context, leading to duplicate code and broken integrations.
+
+**With logs in git**: Every implementation is searchable, preventing duplication and enabling code reuse.
+
+---
+
+## Implementation
+
+### Recommended .gitignore Rules
+
+Add to your `.gitignore`:
+
+```gitignore
+# .spec-workflow selective tracking
+
+# Exclude runtime data
+.spec-workflow/approvals/              # MCP approval temporary data
+.spec-workflow/.cache/                 # Cache directory
+
+# Exclude temporary files
+.spec-workflow/specs/*/*.backup        # Backup files (e.g., tasks.md.backup)
+.spec-workflow/specs/*/.snapshots/     # Temporary snapshots
+.spec-workflow/**/*.log                # Log files
+.spec-workflow/**/.DS_Store            # macOS metadata
+.spec-workflow/**/*.swp                # Vim swap files
+
+# All other directories/files are tracked by default:
+# ✅ specs/ (knowledge base)
+# ✅ templates/ (reusable)
+# ✅ user-templates/ (project config)
+# ✅ steering/ (product vision)
+```
+
+### Verification Commands
+
+```bash
+# 1. Verify tracked files
+git ls-files .spec-workflow/
+
+# Expected output:
+#   .spec-workflow/specs/my-feature/requirements.md
+#   .spec-workflow/specs/my-feature/design.md
+#   .spec-workflow/specs/my-feature/tasks.md
+#   .spec-workflow/specs/my-feature/Implementation Logs/task-1.md
+#   .spec-workflow/templates/*.md
+#   .spec-workflow/user-templates/*.md
+
+# 2. Verify excluded files
+git status --ignored .spec-workflow/
+
+# Expected ignored:
+#   .spec-workflow/approvals/
+#   .spec-workflow/.cache/
+#   .spec-workflow/specs/*/tasks.md.backup
+```
+
+### Migration from Full Exclusion
+
+If your `.gitignore` currently has `.spec-workflow/` (full exclusion):
+
+```bash
+# 1. Remove blanket exclusion
+sed -i '' '/^\.spec-workflow\/$/d' .gitignore
+
+# 2. Add selective rules (see above)
+
+# 3. Track existing specs
+git add .spec-workflow/specs/
+git add .spec-workflow/templates/
+git add .spec-workflow/user-templates/
+git add .spec-workflow/steering/
+
+# 4. Verify before committing
+git status .spec-workflow/
+
+# 5. Commit
+git commit -m "feat: track .spec-workflow knowledge assets
+
+Enable version control for specs, templates, and implementation logs
+while excluding runtime data (approvals/, .cache/).
+
+Implementation logs are critical for AI code discovery to prevent
+duplicate implementations."
+```
+
+---
+
+## Decision Record
+
+### Why Not Use implementation_record.md to Rebuild?
+
+**Misconception**: "We can rebuild .spec-workflow from implementation_record.md"
+
+**Reality**: Different information granularity
+
+| Document | Purpose | Content Example |
+|----------|---------|-----------------|
+| **implementation_record.md** | Version-level summary | "v0.1.6: Exact 70→71 (+1.4%)" |
+| **Implementation Logs** | Task-level details | "safeExtractKPI at scripts/update-docs.js:125" |
+
+**You cannot derive**:
+- Function signatures from KPI summaries
+- File locations from version descriptions
+- Integration patterns from effect metrics
+
+**Implementation Logs contain**:
+- API endpoints (method, path, request/response formats)
+- Component props and exports
+- Function signatures and locations
+- Integration data flow descriptions
+
+This searchable knowledge base is **irreplaceable** for preventing code duplication.
+
+### Why Not Track Everything?
+
+**Excluded items** (approvals/, .cache/) are:
+- ✅ Auto-generated by MCP server
+- ✅ Session-specific (no reuse value)
+- ✅ Can be regenerated on demand
+- ❌ Pollute git history with noise
+
+**Tracking these would**:
+- ❌ Create merge conflicts in approval JSON
+- ❌ Bloat repository with temporary data
+- ❌ Obscure actual code changes in git diff
+
+---
+
+## Best Practices
+
+### 1. Commit Specs as You Build
+
+```bash
+# After completing requirements.md
+git add .spec-workflow/specs/my-feature/requirements.md
+git commit -m "spec: add my-feature requirements"
+
+# After each implementation log
+git add .spec-workflow/specs/my-feature/Implementation\ Logs/
+git commit -m "spec: log my-feature task 3 implementation"
+```
+
+### 2. Use Atomic Commits for Spec Phases
+
+```bash
+# One commit per spec phase
+git commit -m "spec(my-feature): complete requirements phase"
+git commit -m "spec(my-feature): complete design phase"
+git commit -m "spec(my-feature): complete tasks phase"
+```
+
+### 3. Link Implementation to Spec
+
+In your code commit messages:
+
+```
+feat: implement user authentication
+
+Implements authentication following spec: my-feature
+
+Task: my-feature/5
+Spec: .spec-workflow/specs/my-feature
+```
+
+This creates bidirectional traceability:
+- **Spec → Code**: Implementation Logs record which commits implemented each task
+- **Code → Spec**: Commit messages reference spec and task IDs
+
+---
+
+## Success Criteria
+
+✅ **Spec knowledge base preserved**: All specs, templates, and logs in git
+✅ **Runtime data excluded**: No approval JSONs or cache in git history
+✅ **AI code discovery enabled**: `grep` on Implementation Logs finds existing code
+✅ **Clean git diff**: No temporary file noise in `git status`
+✅ **Team collaboration**: Shared templates and steering documents
+
+---
+
+## History
+
+This guide consolidates analysis from three original documents:
+- `GITIGNORE_STRATEGY.md` (precise directory analysis)
+- `COMPLETE_GITIGNORE_GUIDE.md` (comprehensive coverage)
+- `GIT_STRATEGY_ANALYSIS.md` (decision rationale)
+
+Original documents archived at: `analysis/docs-flow-automation/archived/`
