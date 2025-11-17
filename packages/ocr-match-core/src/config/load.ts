@@ -7,10 +7,12 @@ import { logger } from '../util/log.js';
 import {
   type FullConfig,
   type LabelAliasConfig,
+  type BucketizeConfig,
   LatestConfigPointerSchema,
   NormalizeConfigSchema,
   DomainConfigSchema,
   LabelAliasConfigSchema,
+  BucketizeConfigSchema,
 } from './schema.js';
 
 /**
@@ -114,6 +116,25 @@ export function loadConfig(configRoot: string, version: string, sha: string): Fu
   // 清洗配置（过滤超长别名）
   const label_alias = sanitizeConfig(labelAliasRaw);
 
+  // 加载并校验 bucketize.json（可选，向后兼容）
+  const bucketizePath = path.join(configRoot, 'bucketize.json');
+  let bucketize: BucketizeConfig | undefined;
+
+  if (fs.existsSync(bucketizePath)) {
+    try {
+      const bucketizeContent = fs.readFileSync(bucketizePath, 'utf-8');
+      const bucketizeData = JSON.parse(bucketizeContent);
+      bucketize = BucketizeConfigSchema.parse(bucketizeData);
+      logger.info('config.load', `Loaded bucketize.json: supplierHardMin=${bucketize.supplierHardMin}, autoPass=${bucketize.autoPass}`);
+    } catch (e) {
+      logger.warn('config.load', `Failed to load bucketize.json, using defaults: ${e instanceof Error ? e.message : String(e)}`);
+      bucketize = BucketizeConfigSchema.parse({});
+    }
+  } else {
+    logger.warn('config.load', `bucketize.json not found at ${bucketizePath}, using defaults`);
+    bucketize = undefined; // 向后兼容，旧配置不强制要求
+  }
+
   logger.info(
     'config.load',
     `Config loaded: replacements=${normalize.replacements.length}, ` +
@@ -126,6 +147,7 @@ export function loadConfig(configRoot: string, version: string, sha: string): Fu
     normalize,
     domain,
     label_alias,
+    bucketize,
     version,
     sha,
     root: configRoot,
