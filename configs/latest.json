@@ -1,7 +1,7 @@
 {
-  "path": "configs/v0.labs/e7bef887",
-  "version": "v0.labs",
-  "sha": "e7bef887",
+  "path": "configs/v0.1.7/373c0c28",
+  "version": "v0.1.7",
+  "sha": "373c0c28",
   "created_at": "20251117",
-  "note": "v0.labs: Configurable field mapping for DB columns (_dbColumnNames)"
+  "note": "v0.1.7: Configuration cleanup, extraction boundaries, and supplier-weighted scoring"
 }
