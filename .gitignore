@@ -17,6 +17,7 @@ data/**
 # 运行输出（不提交）
 runs/**
 !runs/.keep
+**/runs/tmp/**
 
 # 测试配置（不提交）
 configs/v0.test/
