@@ -138,15 +138,18 @@ function postProcessFields(rawSupplier: string, rawProject: string): PostProcess
  * @param index - 预构建的倒排索引
  * @param config - 完整配置（normalize + label_alias + domain）
  * @param bucketConfig - 分桶配置
+ * @param progress - 进度标记（可选）
  * @returns 匹配结果
  */
 export async function matchOcrFile(
   ocrFilePath: string,
   index: InvertedIndex,
   config: FullConfig,
-  bucketConfig: BucketConfig
+  bucketConfig: BucketConfig,
+  progress?: string
 ): Promise<MatchOcrResult> {
   const fileName = path.basename(ocrFilePath);
+  const progressPrefix = progress ? `${progress} ` : '';
 
   // 1. 读取 OCR .txt 文件
   const ocrText = await fs.readFile(ocrFilePath, 'utf-8');
@@ -158,7 +161,7 @@ export async function matchOcrFile(
     domain: config.domain,
   });
 
-  logger.info('match.extract', `Extracted from ${fileName}: q1="${extracted.q_supplier}", q2="${extracted.q_project}"`);
+  logger.info('match.extract', `${progressPrefix}Extracted from ${fileName}: q1="${extracted.q_supplier}", q2="${extracted.q_project}"`);
 
   // 2.5 后处理清洗（修复边界切割问题）
   const cleaned = postProcessFields(extracted.q_supplier, extracted.q_project);
@@ -166,7 +169,7 @@ export async function matchOcrFile(
   if (cleaned.wasModified) {
     logger.info(
       'match.postprocess',
-      `Cleaned ${fileName}: supplier=${cleaned.supplierModified ? 'YES' : 'NO'}, project=${cleaned.projectModified ? 'YES' : 'NO'}`
+      `${progressPrefix}Cleaned ${fileName}: supplier=${cleaned.supplierModified ? 'YES' : 'NO'}, project=${cleaned.projectModified ? 'YES' : 'NO'}`
     );
     if (cleaned.supplierModified) {
       logger.debug('match.postprocess', `  Supplier: "${extracted.q_supplier}" → "${cleaned.supplier}"`);
@@ -184,7 +187,7 @@ export async function matchOcrFile(
 
   logger.info(
     'match.match',
-    `Matched ${fileName}: mode=${matchResult.mode}, candidates=${matchResult.candidates.length}, recalled=${matchResult.recalledCount}`
+    `${progressPrefix}Matched ${fileName}: mode=${matchResult.mode}, candidates=${matchResult.candidates.length}, recalled=${matchResult.recalledCount}`
   );
 
   // 4. 分桶（使用清洗后的字段）
@@ -192,7 +195,7 @@ export async function matchOcrFile(
 
   logger.info(
     'match.bucket',
-    `Bucketed ${fileName}: bucket=${bucketResult.bucket}, reason=${bucketResult.reason || 'null'}`
+    `${progressPrefix}Bucketed ${fileName}: bucket=${bucketResult.bucket}, reason=${bucketResult.reason || 'null'}`
   );
 
   // 5. 组装结果
@@ -225,13 +228,16 @@ export async function matchOcrBatch(
   bucketConfig: BucketConfig
 ): Promise<MatchOcrResult[]> {
   const results: MatchOcrResult[] = [];
+  const total = ocrFilePaths.length;
 
-  for (const filePath of ocrFilePaths) {
+  for (let i = 0; i < ocrFilePaths.length; i++) {
+    const filePath = ocrFilePaths[i];
+    const progress = `[${i + 1}/${total}]`;
     try {
-      const result = await matchOcrFile(filePath, index, config, bucketConfig);
+      const result = await matchOcrFile(filePath, index, config, bucketConfig, progress);
       results.push(result);
     } catch (err) {
-      logger.error('match.batch', `Failed to match ${filePath}: ${err}`);
+      logger.error('match.batch', `${progress} Failed to match ${filePath}: ${err}`);
       // 继续处理其他文件
     }
   }
