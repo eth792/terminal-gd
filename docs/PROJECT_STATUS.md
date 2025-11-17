@@ -28,6 +28,11 @@
   - 每个版本的代码变更、测试结果、技术决策
   - 关键指标演进图表
 
+- **测试运行指南** → [TEST_GUIDE.md](TEST_GUIDE.md)
+  - 标准化测试脚本使用方法（`test:full` / `test:quick` / `test:custom`）
+  - CLI 参数详解和调优建议
+  - 版本发布测试流程
+
 - **版本发布流程** → [../analysis/docs-flow-automation/RELEASE_WORKFLOW.md](../analysis/docs-flow-automation/RELEASE_WORKFLOW.md)
   - 阶段 0-5 完整发布流程
   - 文档更新 Checklist

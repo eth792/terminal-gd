@@ -37,12 +37,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 完整版本演进记录（v0.1.0 → 当前）
 - 每个版本的技术洞察和代码变更
 
-**Step 3: 发布流程** → Read `analysis/docs-flow-automation/RELEASE_WORKFLOW.md`
+**Step 3: 测试运行指南** → Read `docs/TEST_GUIDE.md`
+- 标准化测试脚本使用方法
+- CLI 参数详解和调优建议
+- 版本发布测试流程
+
+**Step 4: 发布流程** → Read `analysis/docs-flow-automation/RELEASE_WORKFLOW.md`
 - 阶段 0-5 完整工作流
 - 文档更新 Checklist
 - 常见遗漏提醒
 
-**Step 4: 技术决策** → Read `docs/TECHNICAL_DECISIONS.md`
+**Step 5: 技术决策** → Read `docs/TECHNICAL_DECISIONS.md`
 - 核心架构决策（Monorepo/配置版本化/运行包结构）
 - 设计约束和演进教训
 
@@ -222,6 +227,11 @@ runs/run_YYYYmmdd_HHMMSS__<tag>/
 pnpm install                                    # 安装依赖
 pnpm -F ./apps/electron-app dev                 # 开发 Electron
 pnpm -F ./packages/ocr-match-core build         # 构建 core 包
+
+# 测试运行（推荐使用标准化脚本）
+pnpm test:full                                  # 完整测试（带 digest 校验）
+pnpm test:quick                                 # 快速测试（跳过校验）
+pnpm test:custom -- <args>                      # 自定义参数测试
 
 # 文档生成
 npm run update-docs                             # 更新文档自动化

@@ -9,6 +9,9 @@
   "scripts": {
     "dev:vite": "pnpm -F rpa-automation-tool dev:vite",
     "update-docs": "node scripts/update-docs.js",
-    "release": "node scripts/release.js"
+    "release": "node scripts/release.js",
+    "test:full": "pnpm -F ./packages/ocr-match-core test:full",
+    "test:quick": "pnpm -F ./packages/ocr-match-core test:quick",
+    "test:custom": "pnpm -F ./packages/ocr-match-core test:custom"
   }
 }
