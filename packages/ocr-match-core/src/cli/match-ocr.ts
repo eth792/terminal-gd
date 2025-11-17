@@ -28,9 +28,11 @@ interface MatchOcrArgs {
   autoPass?: number;        // 自动通过阈值
   minFieldSim?: number;     // 最低字段相似度
   minDeltaTop?: number;     // Top1-Top2 最小差值
+  supplierHardMin?: number; // v0.1.7: 供应商硬阈值
+  minReview?: number;       // v0.1.7: review 最低分
   topk?: number;            // 返回 TopK 候选
   maxCand?: number;         // 最大召回候选数
-  weights?: string;         // 字段权重（如 "0.5,0.5"）
+  weights?: string;         // 字段权重（如 "0.7,0.3"）
   includeTop3?: boolean;    // 是否输出 results_top3.csv
   logLevel?: string;        // 日志级别
 }
@@ -83,18 +85,33 @@ async function main() {
           })
           .option('autoPass', {
             type: 'number',
-            description: 'Auto-pass threshold',
+            description: 'Auto-pass threshold (overrides config bucketize.json)',
             default: DEFAULT_BUCKET_CONFIG.autoPass,
           })
           .option('minFieldSim', {
             type: 'number',
-            description: 'Minimum field similarity',
+            description: 'Minimum field similarity (overrides config bucketize.json)',
             default: DEFAULT_BUCKET_CONFIG.minFieldSim,
           })
           .option('minDeltaTop', {
             type: 'number',
-            description: 'Minimum delta between Top1 and Top2',
+            description: 'Minimum delta between Top1 and Top2 (overrides config bucketize.json)',
             default: DEFAULT_BUCKET_CONFIG.minDeltaTop,
+          })
+          .option('supplierHardMin', {
+            type: 'number',
+            description: 'Supplier hard threshold (overrides config bucketize.json)',
+            default: DEFAULT_BUCKET_CONFIG.supplierHardMin,
+          })
+          .option('minReview', {
+            type: 'number',
+            description: 'Review minimum score (overrides config bucketize.json)',
+            default: DEFAULT_BUCKET_CONFIG.minReview,
+          })
+          .option('weights', {
+            type: 'string',
+            description: 'Field weights (e.g., "0.7,0.3") (overrides config bucketize.json)',
+            default: '0.7,0.3',
           })
           .option('topk', {
             type: 'number',
@@ -251,17 +268,32 @@ async function main() {
       throw new Error(`Invalid weights format: ${args.weights}`);
     }
 
-    // 5. 批量匹配
+    // 5. 构建桶配置（CLI 参数优先于配置文件）
     const bucketConfig = {
       autoPass: args.autoPass!,
       minFieldSim: args.minFieldSim!,
       minDeltaTop: args.minDeltaTop!,
+      supplierHardMin: args.supplierHardMin!,
+      minReview: args.minReview!,
+      weights: weights,
     };
 
-    logger.info(
-      'cli.match-ocr',
-      `Matching with thresholds: autoPass=${bucketConfig.autoPass}, minFieldSim=${bucketConfig.minFieldSim}, minDeltaTop=${bucketConfig.minDeltaTop}`
-    );
+    // 如果配置有 bucketize.json，记录其被覆盖的情况
+    if (config.bucketize) {
+      logger.info(
+        'cli.match-ocr',
+        `Config bucketize.json found: supplierHardMin=${config.bucketize.supplierHardMin}, autoPass=${config.bucketize.autoPass}, minReview=${config.bucketize.minReview}, weights=${config.bucketize.weights}`
+      );
+      logger.info(
+        'cli.match-ocr',
+        `CLI args override config for: autoPass=${bucketConfig.autoPass}, minFieldSim=${bucketConfig.minFieldSim}, minDeltaTop=${bucketConfig.minDeltaTop}, supplierHardMin=${bucketConfig.supplierHardMin}, minReview=${bucketConfig.minReview}, weights=${bucketConfig.weights}`
+      );
+    } else {
+      logger.info(
+        'cli.match-ocr',
+        `Using CLI args (no bucketize.json): autoPass=${bucketConfig.autoPass}, minFieldSim=${bucketConfig.minFieldSim}, minDeltaTop=${bucketConfig.minDeltaTop}, supplierHardMin=${bucketConfig.supplierHardMin}, minReview=${bucketConfig.minReview}, weights=${bucketConfig.weights}`
+      );
+    }
 
     const results = await matchOcrBatch(ocrFiles, index, config, bucketConfig);
 

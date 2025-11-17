@@ -16,7 +16,11 @@ export enum FailReason {
   // 分桶阶段（需要人工审核）
   DELTA_TOO_SMALL = 'DELTA_TOO_SMALL',               // Top1-Top2 差值过小
   SCORE_BELOW_AUTO_PASS = 'SCORE_BELOW_AUTO_PASS',   // 分数低于自动通过阈值
-  SUPPLIER_DIFF_SAME_PROJECT = 'SUPPLIER_DIFF_SAME_PROJECT', // 供应商不同但项目高度匹配
+
+  // v0.1.7 新增原因
+  SUPPLIER_HARD_REJECT = 'SUPPLIER_HARD_REJECT',     // 供应商相似度低于硬阈值
+  SCORE_TOO_LOW = 'SCORE_TOO_LOW',                   // 综合分数过低
+  SCORE_BORDERLINE = 'SCORE_BORDERLINE',             // 分数在 review 区间
 }
 
 /**
