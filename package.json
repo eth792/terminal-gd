@@ -12,6 +12,7 @@
     "release": "node scripts/release.js",
     "test:full": "pnpm -F ./packages/ocr-match-core test:full",
     "test:quick": "pnpm -F ./packages/ocr-match-core test:quick",
-    "test:custom": "pnpm -F ./packages/ocr-match-core test:custom"
+    "test:custom": "pnpm -F ./packages/ocr-match-core test:custom",
+    "test:sample": "pnpm -F ./packages/ocr-match-core test:sample"
   }
 }

@@ -130,6 +130,115 @@ pnpm test:custom -- \
   --autoPass 0.75
 ```
 
+### test:sample (快速采样测试) ⚡
+
+**用途**: 从 baseline 运行包中采样代表性测试用例,快速验证代码改动
+
+**特点**:
+- ✅ **12 倍加速**: 38 分钟 → 2-3 分钟
+- ✅ 分层采样: 按 bucket (exact/review/fail) 和 reason 采样
+- ✅ 代表性覆盖: 所有失败类别至少 3-5 个样本
+- ⚠️ **限制**: 不适用于版本发布前的最终测试
+
+**命令**:
+```bash
+pnpm test:sample
+```
+
+**使用场景**:
+- ✅ 算法逻辑修改后快速验证
+- ✅ 参数调优实验
+- ✅ 防止灾难性回归 (如 v0.1.7 的 100% 失败率)
+- ❌ 版本发布前的最终测试 (必须使用 `test:full`)
+
+**工作流程**:
+1. **采样**: 从 `runs/run_latest` 提取 35-40 个代表性样本
+2. **构建**: `pnpm build` 最新代码
+3. **测试**: 使用采样文件列表运行测试
+4. **输出**: 生成 `run_sample_{timestamp}/` 运行包
+
+**前提条件**:
+需要创建 `runs/run_latest` 符号链接指向最新 baseline:
+```bash
+# 指向最新的完整测试运行包
+ln -s run_20251117_1044 runs/run_latest
+```
+
+**采样配置** (在 `scripts/sample-test-cases.js` 中调整):
+```javascript
+const SAMPLE_CONFIG = {
+  exact: 5,        // Exact 类别采样 5 个
+  review: 5,       // Review 类别采样 5 个
+  fail: {
+    EXTRACT_EMPTY_SUPPLIER: 5,
+    FIELD_SIM_LOW_SUPPLIER: 5,
+    NO_CANDIDATE: 3,
+    DELTA_TOO_SMALL: 3,
+    default: 3     // 其他失败原因各 3 个
+  }
+};
+```
+
+**性能对比**:
+| 测试模式 | 样本数 | 耗时 | 适用场景 |
+|---------|--------|------|---------|
+| `test:full` | 222 | 38 分钟 | 版本发布前最终测试 |
+| `test:sample` | 35-40 | 2-3 分钟 | 快速验证代码改动 |
+| `test:quick` | 222 | 37 分钟 | ⚠️ 几乎无加速,已废弃 |
+
+**示例使用**:
+```bash
+# 1. 建立 baseline (完整测试)
+pnpm test:full
+ln -s run_20251117_1044 runs/run_latest
+
+# 2. 修改代码 (如 bucketize.ts)
+vim packages/ocr-match-core/src/bucket/bucketize.ts
+
+# 3. 快速验证 (2-3 分钟)
+pnpm test:sample
+
+# 4. 如果采样测试通过,运行完整测试
+pnpm test:full
+```
+
+**故障排查**:
+
+**Q: `Error: Baseline run directory does not exist: runs/run_latest`**
+
+A: 创建符号链接:
+```bash
+ln -s run_20251117_1044 runs/run_latest
+```
+
+**Q: `Error: X files not found`**
+
+A: 确保 `data/ocr_txt/` 目录与 baseline 运行包使用的 OCR 源一致。
+
+**Q: 采样数量不足怎么办?**
+
+A: 如果某个类别样本数 < 配置要求,脚本会自动使用全部可用样本并显示警告。
+
+**Q: 如何调整采样数量?**
+
+A: 编辑 `scripts/sample-test-cases.js` 中的 `SAMPLE_CONFIG` 对象:
+```javascript
+// 增加 exact 采样数
+exact: 10,  // 原来是 5
+
+// 减少 fail 采样数
+fail: {
+  EXTRACT_EMPTY_SUPPLIER: 3,  // 原来是 5
+  default: 2  // 原来是 3
+}
+```
+
+**注意事项**:
+- ⚠️ 采样测试**通过**不保证完整测试通过
+- ⚠️ 采样测试**失败**则完整测试必然失败 (早期预警)
+- ⚠️ 每次算法改动后,建议至少运行一次 `test:full` 更新 baseline
+- ✅ 采样结果具有代表性,可快速发现明显回归
+
 ---
 
 ## CLI 参数详解

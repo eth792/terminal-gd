@@ -24,6 +24,7 @@ interface MatchOcrArgs {
   out: string;              // 输出运行包目录
   db?: string;              // DB 文件路径（用于 digest 校验）
   allowStaleIndex?: boolean; // 允许使用过期索引
+  files?: string;           // 文件列表路径（每行一个文件名，相对于 --ocr）
   autoPass?: number;        // 自动通过阈值
   minFieldSim?: number;     // 最低字段相似度
   minDeltaTop?: number;     // Top1-Top2 最小差值
@@ -75,6 +76,10 @@ async function main() {
             type: 'boolean',
             description: 'Allow using stale index (skip digest check)',
             default: false,
+          })
+          .option('files', {
+            type: 'string',
+            description: 'File list to process (one filename per line, relative to --ocr)',
           })
           .option('autoPass', {
             type: 'number',
@@ -201,15 +206,44 @@ async function main() {
       logger.warn('cli.match-ocr', `--allow-stale-index is set, skipping digest check`);
     }
 
-    // 3. 扫描 OCR 文本文件
-    logger.info('cli.match-ocr', `Scanning OCR directory: ${args.ocr}`);
-    const ocrFiles = await scanOcrFiles(args.ocr);
+    // 3. 获取 OCR 文本文件列表
+    let ocrFiles: string[];
 
-    if (ocrFiles.length === 0) {
-      throw new Error(`No .txt files found in ${args.ocr}`);
+    if (args.files) {
+      // 文件列表模式：从文件读取
+      logger.info('cli.match-ocr', `Loading file list from: ${args.files}`);
+      const fileListContent = await fs.readFile(args.files, 'utf-8');
+      const filenames = fileListContent
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      // 转换为绝对路径（相对于 --ocr 目录）
+      ocrFiles = filenames.map(filename => path.join(args.ocr, filename));
+
+      // 验证文件存在性
+      const missingFiles = ocrFiles.filter(f => !fs_sync.existsSync(f));
+      if (missingFiles.length > 0) {
+        logger.error(
+          'cli.match-ocr',
+          `Missing files:\n${missingFiles.join('\n')}\n` +
+          `Ensure --ocr directory matches the baseline run's OCR source`
+        );
+        throw new Error(`${missingFiles.length} files not found`);
+      }
+
+      logger.info('cli.match-ocr', `✓ Loaded ${ocrFiles.length} files from list`);
+    } else {
+      // 目录扫描模式：保持现有逻辑
+      logger.info('cli.match-ocr', `Scanning OCR directory: ${args.ocr}`);
+      ocrFiles = await scanOcrFiles(args.ocr);
+
+      if (ocrFiles.length === 0) {
+        throw new Error(`No .txt files found in ${args.ocr}`);
+      }
+
+      logger.info('cli.match-ocr', `✓ Found ${ocrFiles.length} files from directory scan`);
     }
-
-    logger.info('cli.match-ocr', `Found ${ocrFiles.length} OCR files`);
 
     // 4. 解析权重
     const weights = args.weights!.split(',').map(Number) as [number, number];
