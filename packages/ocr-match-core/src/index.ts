@@ -26,6 +26,8 @@ export { logger } from './util/log.js';
 // 索引模块 (Task 4)
 export { buildIndex, tokenize, computeDigest, buildInvertedIndex } from './indexer/builder.js';
 export type { InvertedIndex, DbRow } from './indexer/types.js';
+export { resolveColumn, resolveIndexedColumns } from './indexer/columnResolver.js';
+export type { ColumnResolutionResult } from './indexer/columnResolver.js';
 
 // 匹配模块 (Task 5)
 export { levenshteinSimilarity, jaccardSimilarity, fieldSimilarity, hybridScore, singleFieldScore } from './match/similarity.js';

@@ -23,6 +23,15 @@ export const LabelAliasConfigSchema = z.object({
   supplier: z.array(z.string()),
   project: z.array(z.string()),
   order: z.array(z.string()).optional(),
+
+  // DB-specific column name aliases
+  _dbColumnNames: z
+    .object({
+      supplier: z.array(z.string()).default(['供应单位名称']),
+      project: z.array(z.string()).default(['单体工程名称']),
+      order: z.array(z.string()).optional().default(['订单号', '订号']),
+    })
+    .optional(),
 });
 
 export type LabelAliasConfig = z.infer<typeof LabelAliasConfigSchema>;

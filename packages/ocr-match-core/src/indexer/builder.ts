@@ -2,9 +2,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { normalize } from '../normalize/pipeline.js';
-import type { NormalizeConfig } from '../config/schema.js';
+import type { NormalizeConfig, LabelAliasConfig } from '../config/schema.js';
 import type { DbRow, InvertedIndex } from './types.js';
 import { logger } from '../util/log.js';
+import { resolveIndexedColumns } from './columnResolver.js';
 
 /**
  * n-gram分词
@@ -113,16 +114,19 @@ export async function buildIndex(
   options: {
     /** n-gram大小 */
     ngramSize?: number;
-    /** 字段1列名（供应商） */
+    /** 字段1列名（供应商，已废弃，使用 labelAliasConfig 替代） */
     field1Column?: string;
-    /** 字段2列名（工程名称） */
+    /** 字段2列名（工程名称，已废弃，使用 labelAliasConfig 替代） */
     field2Column?: string;
+    /** Label alias配置（包含DB列名映射） */
+    labelAliasConfig?: LabelAliasConfig;
   } = {}
 ): Promise<InvertedIndex> {
   const {
     ngramSize = 2,
     field1Column = 's_field1',
     field2Column = 's_field2',
+    labelAliasConfig,
   } = options;
 
   const startTime = Date.now();
@@ -148,6 +152,7 @@ export async function buildIndex(
   // 3. 解析所有文件并合并
   const allRows: DbRow[] = [];
   let firstFileColumns: string[] | null = null;
+  let resolvedIndices: { supplierIdx: number; projectIdx: number; orderIdx: number | null } | null = null;
   let globalRowId = 0;
 
   for (const dbFile of dbFiles) {
@@ -169,26 +174,28 @@ export async function buildIndex(
       }
     }
 
-    // 查找列索引（只需要检查第一次）
-    const field1Idx = columns.indexOf(field1Column);
-    const field2Idx = columns.indexOf(field2Column);
+    // 查找列索引（只在第一个文件执行）
+    if (resolvedIndices === null) {
+      // Priority chain: labelAliasConfig > legacy params > defaults
+      const dbColumnNames = labelAliasConfig?._dbColumnNames ?? {
+        supplier: [field1Column],
+        project: [field2Column],
+      };
 
-    if (field1Idx === -1 || field2Idx === -1) {
-      const availableColumns = columns.slice(0, 10).join(', ');
-      const moreColumns = columns.length > 10 ? ` (and ${columns.length - 10} more)` : '';
-      throw new Error(
-        `Required columns not found in ${path.basename(dbFile)}:\n` +
-        `  Looking for: ${field1Column}, ${field2Column}\n` +
-        `  Available columns: ${availableColumns}${moreColumns}\n` +
-        `  Total columns: ${columns.length}`
+      resolvedIndices = resolveIndexedColumns(columns, dbColumnNames);
+      logger.info(
+        'indexer.resolve',
+        `Resolved columns: supplier=${resolvedIndices.supplierIdx}, project=${resolvedIndices.projectIdx}, order=${resolvedIndices.orderIdx ?? 'N/A'}`
       );
     }
+
+    const { supplierIdx, projectIdx } = resolvedIndices;
 
     // 转换为 DbRow 格式
     let skippedCount = 0;
     for (let i = 0; i < rawRows.length; i++) {
       const values = rawRows[i];
-      if (values.length < Math.max(field1Idx, field2Idx) + 1) {
+      if (values.length < Math.max(supplierIdx, projectIdx) + 1) {
         logger.warn('indexer.parse', `Skipping malformed line ${i + 2} in ${path.basename(dbFile)}`);
         skippedCount++;
         continue;
@@ -197,8 +204,8 @@ export async function buildIndex(
       globalRowId++;
       allRows.push({
         id: `${globalRowId}`,
-        f1: values[field1Idx] || '',
-        f2: values[field2Idx] || '',
+        f1: values[supplierIdx] || '',
+        f2: values[projectIdx] || '',
         source_file: dbFile,
         row_index: i + 1,
       });
@@ -310,18 +317,81 @@ async function parseExcelFile(filePath: string): Promise<{ columns: string[]; ro
   }
 
   const wb = XLSX.readFile(filePath);
-  const wsname = wb.SheetNames[0];
+
+  // 查找第一个非隐藏的 sheet
+  let wsname: string = wb.SheetNames[0]; // 默认第一个
+  let sheetIndex = 0;
+
+  for (let i = 0; i < wb.SheetNames.length; i++) {
+    const sheetMeta = wb.Workbook?.Sheets?.[i];
+    const hidden = sheetMeta?.Hidden || 0; // 0=visible, 1=hidden, 2=very hidden
+
+    if (hidden === 0) {
+      wsname = wb.SheetNames[i];
+      sheetIndex = i;
+      break;
+    }
+  }
+
+  // 如果所有 sheet 都被隐藏，回退到第一个 sheet
+  if (sheetIndex === 0 && wb.SheetNames.length > 0) {
+    const firstSheetMeta = wb.Workbook?.Sheets?.[0];
+    const firstHidden = firstSheetMeta?.Hidden || 0;
+
+    if (firstHidden !== 0) {
+      // 第一个 sheet 是隐藏的，说明所有 sheet 都被隐藏了
+      logger.warn(
+        'indexer.parse',
+        `All sheets in ${path.basename(filePath)} are hidden. Using first sheet: "${wsname}"`
+      );
+    } else {
+      // 第一个 sheet 就是可见的
+      logger.info(
+        'indexer.parse',
+        `Using first visible sheet: "${wsname}" (index ${sheetIndex})`
+      );
+    }
+  } else {
+    logger.info(
+      'indexer.parse',
+      `Using first visible sheet: "${wsname}" (index ${sheetIndex})`
+    );
+  }
+
   const ws = wb.Sheets[wsname];
 
-  // 转换为二维数组
+  // 转换为二维数组（不指定列名，读取所有原始行）
   const data: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
   if (data.length === 0) {
     throw new Error('Empty Excel file');
   }
 
-  const columns = data[0].map((v: any) => String(v).trim());
-  const rows = data.slice(1).map((row: any[]) => row.map((v: any) => String(v).trim()));
+  // 智能检测列名行：在前5行中查找包含关键列名的行
+  // 这样可以处理Excel文件有标题行、备注行等情况
+  let headerRowIndex = 0;
+
+  const keyColumns = ['供应单位名称', '单体工程名称', '计划编号', '物料名称']; // 典型列名
+
+  for (let i = 0; i < Math.min(5, data.length); i++) {
+    const row = data[i];
+    const rowStr = row.map((v: any) => String(v || '').trim());
+
+    // 检查这一行是否包含至少2个关键列名
+    const matchedKeys = keyColumns.filter(key => rowStr.includes(key));
+
+    if (matchedKeys.length >= 2) {
+      headerRowIndex = i;
+      logger.info(
+        'indexer.parse',
+        `Detected header row at line ${i + 1} in ${path.basename(filePath)} (matched ${matchedKeys.length} key columns)`
+      );
+      break;
+    }
+  }
+
+  const columns = data[headerRowIndex].map((v: any) => String(v).trim());
+  const rows = data.slice(headerRowIndex + 1).map((row: any[]) => row.map((v: any) => String(v).trim()));
 
   return { columns, rows };
 }

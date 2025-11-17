@@ -106,6 +106,7 @@ async function main() {
       ngramSize: args.ngramSize,
       field1Column: args.field1,
       field2Column: args.field2,
+      labelAliasConfig: config.label_alias,  // Use new config-based mapping
     });
 
     // 3. 写入 JSON

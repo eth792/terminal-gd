@@ -40,6 +40,7 @@ function sanitizeConfig(cfg: LabelAliasConfig): LabelAliasConfig {
     supplier: sanitizeArray(cfg.supplier, 'supplier'),
     project: sanitizeArray(cfg.project, 'project'),
     order: cfg.order ? sanitizeArray(cfg.order, 'order') : undefined,
+    _dbColumnNames: cfg._dbColumnNames,  // Preserve DB column name mappings
   };
 
   if (removedCount > 0) {

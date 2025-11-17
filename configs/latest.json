@@ -1,7 +1,7 @@
 {
-  "path": "configs/v0.labs/10dae06c",
+  "path": "configs/v0.labs/e7bef887",
   "version": "v0.labs",
-  "sha": "10dae06c",
-  "created_at": "20251113",
-  "note": "v0.1.6: OCR error correction - 工理→工程 (character confusion fix)"
+  "sha": "e7bef887",
+  "created_at": "20251117",
+  "note": "v0.labs: Configurable field mapping for DB columns (_dbColumnNames)"
 }
