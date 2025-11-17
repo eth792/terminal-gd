@@ -61,17 +61,76 @@ ls -lt runs/ | head -5         # 最新运行包
 
 ### Spec Workflow（规格文档工作流）
 
-**适用场景**：创建新功能、重构、架构变更
+**何时使用 Spec**：
 
-**流程**：
+使用 spec-workflow 的判断标准：
+- ✅ **多文件修改**（≥3 个文件）或架构变更
+- ✅ **新增 API endpoints/组件/核心函数**（需要详细设计）
+- ✅ **复杂实施**（需要分阶段审批和文档记录）
+- ❌ 简单 bug fix（单文件、单函数修改）
+- ❌ 纯配置调整（label_alias.json、noise_words.json）
+- ❌ 文档更新（除非涉及架构级文档重构）
+
+**基本流程**：
+
 1. 调用 `mcp__spec-workflow__spec-workflow-guide` 查看完整指南
 2. Requirements → Design → Tasks → Implementation
 3. 每个阶段需要 dashboard 审批
 4. 实施完成后使用 `mcp__spec-workflow__log-implementation` 记录
+5. 详细工作流见 `.spec-workflow/WORKFLOW_GUIDE.md`
 
-**示例**：
-- `claude-md-simplification` spec - 本次 CLAUDE.md 重构
-- `spec-docs-integration` spec - Spec workflow 与 docs-flow 集成
+**与版本发布的关系**：
+
+Spec 可以独立存在（纯重构/文档优化，不发版），也可以关联版本发布：
+
+**Spec-based 版本发布流程**：
+1. 先走 spec-workflow（Requirements → Design → Tasks → Implementation）
+2. 实施代码时遵循 `.spec-workflow/WORKFLOW_GUIDE.md`（更新 tasks.md）
+3. 实施完成后，走 `RELEASE_WORKFLOW.md` Stage 2-5（测试 → 文档 → Git）
+4. 运行 `npm run update-docs` 时带 `specName` 参数（第 5 个参数，kebab-case）
+5. Git commit 包含 spec 实施日志（自动引用链接）
+
+**Implementation Logs 使用时机**：
+
+- **必须使用**：新增 API endpoints、组件、核心函数时
+- **可选使用**：简单重构、文档优化时
+- **记录内容**：`apiEndpoints`, `components`, `functions`, `classes`, `integrations`
+- **工具**：`mcp__spec-workflow__log-implementation`
+
+**完整示例（spec-based 版本发布）**：
+
+```bash
+# 1. 创建 spec（假设：v0.1.8 提取逻辑修复）
+mcp__spec-workflow__spec-workflow-guide
+# Requirements → Design → Tasks（在 dashboard 审批）
+
+# 2. 实施代码（遵循 WORKFLOW_GUIDE.md）
+# - 开发时使用 TodoWrite 追踪进度
+# - 完成 task 后立即更新 tasks.md 状态为 [x]
+# - 提交代码时 commit message 包含 task ID
+
+# 3. 完整测试
+pnpm -F ./packages/ocr-match-core build
+# 运行完整测试 → 生成 run_v0.1.8_fix_20251117_123456
+
+# 4. 更新文档（带 specName）
+npm run update-docs -- v0.1.8 "提取逻辑修复" run_v0.1.8_fix_20251117_123456 v0.1.9 extraction-logic-fix
+
+# 5. Git commit
+git add .
+git commit -m "feat(ocr-core): 提取逻辑修复 (v0.1.8)
+
+详细信息请查看：[extraction-logic-fix Implementation Logs](./.spec-workflow/specs/extraction-logic-fix/)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**已完成的 Spec 示例**：
+- `claude-md-simplification` - CLAUDE.md 重构（218 lines → 文档优化）
+- `spec-docs-integration` - Spec workflow 与 docs-flow 集成
+- `docs-flow-automation` - 版本发布自动化脚本
+- `docs-structure-cleanup` - 文档结构重组
 
 ### Docs Flow Automation（文档自动化）
 
