@@ -231,7 +231,7 @@ pnpm -F ./packages/ocr-match-core build         # 构建 core 包
 # 测试运行（推荐使用标准化脚本）
 pnpm test:full                                  # 完整测试（带 digest 校验）
 pnpm test:quick                                 # 快速测试（跳过校验）
-pnpm test:sample                                # 采样测试（38min → 2-3min，12倍加速）⚡
+pnpm test:sample [<baseline>]                   # 采样测试（38min → 2-3min，8.8倍加速）⚡
 pnpm test:custom -- <args>                      # 自定义参数测试
 
 # 文档生成

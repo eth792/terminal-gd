@@ -142,7 +142,11 @@ pnpm test:custom -- \
 
 **命令**:
 ```bash
+# 方式 1: 使用当前 baseline (推荐)
 pnpm test:sample
+
+# 方式 2: 指定 baseline 并自动更新软链接
+pnpm test:sample run_20251117_1044
 ```
 
 **使用场景**:
@@ -152,17 +156,22 @@ pnpm test:sample
 - ❌ 版本发布前的最终测试 (必须使用 `test:full`)
 
 **工作流程**:
-1. **采样**: 从 `runs/run_latest` 提取 35-40 个代表性样本
-2. **构建**: `pnpm build` 最新代码
-3. **测试**: 使用采样文件列表运行测试
-4. **输出**: 生成 `run_sample_{timestamp}/` 运行包
+1. **选择 Baseline**:
+   - 不带参数: 使用当前 `runs/run_latest` 指向的 baseline
+   - 带参数: 自动更新 `runs/run_latest` 软链接到指定目录
+2. **采样**: 从 baseline 提取 35-40 个代表性样本
+3. **构建**: `pnpm build` 最新代码
+4. **测试**: 使用采样文件列表运行测试
+5. **输出**: 生成 `run_sample_{timestamp}/` 运行包
 
-**前提条件**:
-需要创建 `runs/run_latest` 符号链接指向最新 baseline:
+**首次使用**:
+首次运行 `test:sample` 需要手动创建 `runs/run_latest` 软链接:
 ```bash
 # 指向最新的完整测试运行包
 ln -s run_20251117_1044 runs/run_latest
 ```
+
+之后可以通过 `pnpm test:sample <run_dir>` 自动切换 baseline
 
 **采样配置** (在 `scripts/sample-test-cases.js` 中调整):
 ```javascript
@@ -188,18 +197,21 @@ const SAMPLE_CONFIG = {
 
 **示例使用**:
 ```bash
-# 1. 建立 baseline (完整测试)
-pnpm test:full
-ln -s run_20251117_1044 runs/run_latest
+# 场景 1: 首次使用 (建立 baseline)
+pnpm test:full  # 生成 run_20251117_1044
+pnpm test:sample run_20251117_1044  # 自动创建软链接并运行采样测试
 
-# 2. 修改代码 (如 bucketize.ts)
-vim packages/ocr-match-core/src/bucket/bucketize.ts
+# 场景 2: 日常开发迭代
+vim packages/ocr-match-core/src/bucket/bucketize.ts  # 修改代码
+pnpm test:sample  # 使用当前 baseline 快速验证 (2-3 分钟)
 
-# 3. 快速验证 (2-3 分钟)
-pnpm test:sample
+# 场景 3: 切换到不同 baseline 进行对比
+pnpm test:sample run_v0.1.6_full  # 切换到 v0.1.6 baseline
+pnpm test:sample run_20251117_1044  # 切回最新 baseline
 
-# 4. 如果采样测试通过,运行完整测试
-pnpm test:full
+# 场景 4: 采样测试通过后,完整测试验证
+pnpm test:sample  # 快速验证
+pnpm test:full    # 完整验证 (版本发布前必须)
 ```
 
 **故障排查**:

@@ -23,7 +23,8 @@
     "test:quick": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js --ocr ../../data/ocr_txt --index ../../runs/tmp/index_p0_v3.json --out ../../runs/run_{timestamp} --config ../.. --allow-stale-index --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3",
     "test:custom": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js",
     "sample": "node ../../scripts/sample-test-cases.js ../../runs/run_latest",
-    "test:sample": "pnpm sample && pnpm build && pnpm match-ocr --ocr ../../data/ocr_txt --index ../../runs/tmp/index_p0_v3.json --out ../../runs/run_sample_{timestamp} --config ../.. --db ../../data/db --files ../../runs/tmp/sample_files.txt --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3"
+    "sample-internal": "pnpm sample && pnpm build && pnpm match-ocr --ocr ../../data/ocr_txt --index ../../runs/tmp/index_p0_v3.json --out ../../runs/run_sample_{timestamp} --config ../.. --db ../../data/db --files ../../runs/tmp/sample_files.txt --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3",
+    "test:sample": "bash ../../scripts/run-sample-test.sh"
   },
   "dependencies": {
     "csv-stringify": "^6.5.2",
