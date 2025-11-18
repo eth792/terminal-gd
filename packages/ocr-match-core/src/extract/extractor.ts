@@ -29,35 +29,14 @@ export function extract(text: string, config: ExtractConfig): ExtractResult {
   const linesRaw = text.split('\n'); // 保留原始行（含缩进）
   const lines = linesRaw.map((l) => l.trim()); // 修剪后的行（用于查找标签）
 
-  // 合并所有字段标签（用于跨字段排除检查）
-  const allFieldLabels = [...config.label_alias.supplier, ...config.label_alias.project];
-  const documentFieldLabels = config.domain.document_field_labels || [];
-  const tableHeaderKeywords = config.domain.table_header_keywords || [];
-
   // 提取供应商
-  const supplier = extractField(
-    lines,
-    linesRaw,
-    config.label_alias.supplier,
-    allFieldLabels,
-    documentFieldLabels,
-    tableHeaderKeywords,
-    config.domain.noise_words
-  );
+  const supplier = extractField(lines, linesRaw, config.label_alias.supplier, config.domain.noise_words);
   if (!supplier) {
     warns.push('EXTRACT_EMPTY_SUPPLIER');
   }
 
   // 提取工程名称
-  let project = extractField(
-    lines,
-    linesRaw,
-    config.label_alias.project,
-    allFieldLabels,
-    documentFieldLabels,
-    tableHeaderKeywords,
-    config.domain.noise_words
-  );
+  let project = extractField(lines, linesRaw, config.label_alias.project, config.domain.noise_words);
   if (!project) {
     warns.push('EXTRACT_EMPTY_PROJECT');
   }
@@ -79,66 +58,14 @@ export function extract(text: string, config: ExtractConfig): ExtractResult {
 }
 
 /**
- * 检查是否应该停止查找（三重检查机制）
- * @param line - 当前检查的行
- * @param currentFieldLabels - 当前字段的标签列表
- * @param allFieldLabels - 所有字段的标签列表（supplier + project）
- * @param documentFieldLabels - 文档噪点字段标签列表
- * @returns true 表示应该停止查找
- */
-function shouldStopLookup(
-  line: string,
-  currentFieldLabels: string[],
-  allFieldLabels: string[],
-  documentFieldLabels: string[]
-): boolean {
-  // 检查1: 是否包含其他字段标签
-  const hasOtherFieldLabel = allFieldLabels
-    .filter((l) => !currentFieldLabels.includes(l))
-    .some((l) => line.includes(l));
-
-  // 检查2: 是否包含噪点字段标签
-  const hasDocumentFieldLabel = documentFieldLabels.some((l) => line.includes(l));
-
-  // 检查3: 是否以实体词结尾（防止拼接其他公司名称）
-  const endsWithEntity = /公司|有限|集团$/.test(line.trim());
-
-  return hasOtherFieldLabel || hasDocumentFieldLabel || endsWithEntity;
-}
-
-/**
- * 检查是否为表格表头（2+ 关键词匹配）
- * @param line - 当前检查的行
- * @param keywords - 表格表头关键词列表
- * @returns true 表示是表格表头
- */
-function isTableHeader(line: string, keywords: string[]): boolean {
-  if (keywords.length === 0) return false;
-
-  const matchCount = keywords.filter((keyword) => line.includes(keyword)).length;
-  return matchCount >= 2;
-}
-
-/**
  * 提取单个字段
  * @param lines - 修剪后的文本行数组（用于查找标签）
  * @param linesRaw - 原始文本行数组（含缩进，用于检测续行）
- * @param labels - 当前字段标签列表
- * @param allFieldLabels - 所有字段标签列表
- * @param documentFieldLabels - 文档噪点字段标签列表
- * @param tableHeaderKeywords - 表格表头关键词列表
+ * @param labels - 字段标签列表
  * @param noiseWords - 噪声词列表
  * @returns 提取的字段值
  */
-function extractField(
-  lines: string[],
-  linesRaw: string[],
-  labels: string[],
-  allFieldLabels: string[],
-  documentFieldLabels: string[],
-  tableHeaderKeywords: string[],
-  noiseWords: string[]
-): string {
+function extractField(lines: string[], linesRaw: string[], labels: string[], noiseWords: string[]): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
@@ -175,15 +102,18 @@ function extractField(
           prevLine = prevLineRaw.trim();
         }
 
-        // 向上查找条件（使用辅助函数进行三重检查）
-        const prevLineIndent = prevLineRaw.length - prevLineRaw.trimStart().length;
+        // 向上查找条件：
+        // 1. 上一行不为空
+        // 2. 上一行不包含其他标签
+        // 3. 满足以下任一条件：
+        //    a) 包含典型的实体词
+        //    b) 有深度缩进（>= 60）且不以分隔符开头
+        const hasOtherLabel = labels.some(l => prevLine.includes(l));
         const hasEntity = /公司|有限|集团|工程|项目|线路|站|小区|改造/.test(prevLine);
+        const prevLineIndent = prevLineRaw.length - prevLineRaw.trimStart().length;
         const isDeepIndentValue = prevLineIndent >= 60 && !/^[:：、，。；]/.test(prevLine);
 
-        // 使用 shouldStopLookup 检查是否应该停止（替代原来的 hasOtherLabel）
-        const shouldStop = shouldStopLookup(prevLine, labels, allFieldLabels, documentFieldLabels);
-
-        if (prevLine && !shouldStop && (hasEntity || isDeepIndentValue)) {
+        if (prevLine && !hasOtherLabel && (hasEntity || isDeepIndentValue)) {
           // 拼接找到的行 + 当前行的值
           value = prevLine + (value ? ' ' + value : '');
         }
@@ -194,23 +124,19 @@ function extractField(
         const nextLineRaw = linesRaw[i + 1];
         const nextLine = nextLineRaw.trim();
 
-        // 检查是否为表格表头（使用辅助函数）
-        if (isTableHeader(nextLine, tableHeaderKeywords)) {
-          // 遇到表格表头，立即停止向下查找
-          return value;
-        }
-
         // 计算下一行的缩进（前导空格数）
         const indent = nextLineRaw.length - nextLineRaw.trimStart().length;
         const MIN_INDENT = 20;
 
-        // 检查续行条件（使用辅助函数）
+        // 检查续行条件
         const isDeepIndent = indent >= MIN_INDENT;
-        const startsWithNoise = noiseWords.some((noise) => nextLine.startsWith(noise));
-        const shouldStop = shouldStopLookup(nextLine, labels, allFieldLabels, documentFieldLabels);
+        const hasOtherLabel = labels.some(l => nextLine.includes(l));
+        const startsWithNoise = noiseWords.some(noise => nextLine.startsWith(noise));
+        // 额外条件：下一行不以"公司"、"有限"等结尾（避免拼接其他字段的值）
+        const endsWithEntity = /公司|有限|集团$/.test(nextLine);
 
         // 只拼接满足条件的续行
-        if (nextLine && isDeepIndent && !shouldStop && !startsWithNoise) {
+        if (nextLine && isDeepIndent && !hasOtherLabel && !startsWithNoise && !endsWithEntity) {
           value = value ? value + ' ' + nextLine : nextLine;
         }
       }

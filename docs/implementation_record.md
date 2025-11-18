@@ -71,6 +71,108 @@ implementation_record.md 的版本条目由 `npm run update-docs` 自动生成�
 
 ## 版本历史
 
+### v0.1.8 - Supplier-Threshold Code Salvage (2025-11-18)
+
+**实施内容**:
+- 从失败的 v0.1.7 中提取 supplier-threshold 优化代码 (commit 852050be)
+- 保留 v0.1.6 稳定的 extraction logic (201行, 无修改)
+- 引入 SUPPLIER_HARD_REJECT 机制 (supplierHardMin=0.58)
+- 实现 supplier-weighted scoring [0.7, 0.3]
+- 使用 v0.1.7b 配置 (bucketize.json + domain fields)
+
+**版本定位**: 代码打捞 (Code Salvage) - 从 v0.1.7 灾难中恢复有价值的supplier-threshold优化
+
+**实际效果**: Exact **71** (32%), Review **17** (7.7%), Fail **134** (60.4%)
+
+#### 代码变更
+
+详细信息请查看：[supplier-threshold-fix Implementation Logs](./.spec-workflow/specs/supplier-threshold-fix/)
+
+**核心变更摘要**:
+
+1. **bucketize.ts - Supplier Threshold 机制**
+   - `applySupplierHardThreshold()` - 硬阈值拦截 (f1 < 0.58)
+   - `calculateWeightedScore()` - 加权评分 [0.7, 0.3]
+   - SUPPLIER_HARD_REJECT 失败原因
+
+2. **配置更新**
+   - 使用 `configs/v0.1.7b/9d2376d2/bucketize.json` (supplierHardMin=0.58, autoPass=0.75)
+   - 保留 v0.1.7b domain.json 的 document_field_labels 和 table_header_keywords
+
+3. **代码回滚**
+   - extractor.ts 恢复到 v0.1.6 版本 (201行)
+   - 移除 v0.1.7 的 shouldStopLookup/isTableHeader 等破坏性重构
+
+#### 测试结果
+
+| 版本 | Exact | Review | Fail | 自动通过率 | 运行 ID |
+|------|-------|--------|------|------------|---------|
+| v0.1.6 | 71 (32%) | 16 (7.2%) | 135 (60.8%) | 32% | `run_20251113_21_51` |
+| **v0.1.8** | **71 (32%)** | **17 (7.7%)** | **134 (60.4%)** | **32%** | `run_20251118_13_46` |
+
+**改善效果**:
+- ✅ 自动通过率维持 32% (与 v0.1.6 baseline 持平)
+- ✅ Exact 数量保持 71 (无回归)
+- ✅ SUPPLIER_HARD_REJECT 生效 (29次, 19.2% of failures)
+- ✅ FIELD_SIM_LOW_PROJECT 恢复正常 (67次 vs v0.1.7 的145次)
+- ✅ Weighted scoring [0.7, 0.3] 正确加载并应用
+
+**对比 v0.1.7 灾难**:
+- v0.1.7: 14% 自动通过率 (31 exact, 145 FIELD_SIM_LOW_PROJECT)
+- v0.1.8: 32% 自动通过率 (71 exact, 67 FIELD_SIM_LOW_PROJECT) - **完全恢复**
+
+#### 相关文档
+
+- **完整报告**: `analysis/v0.1.8/v0.1.8_实测报告.md`
+- **运行包**: `runs/run_20251118_13_46/`
+- **规格文档**: `.spec-workflow/specs/v0.1.8-supplier-threshold/requirements.md`
+
+#### 技术洞察
+
+**✅ 成功的代码打捞策略**
+
+v0.1.8 证明了 **"外科手术式代码提取"** 的可行性：
+- 从失败版本 (v0.1.7, commit 852050be) 中分离出 supplier-threshold 优化代码
+- 与稳定的 extraction logic (v0.1.6) 组合
+- 保持 32% baseline 性能的同时引入新功能
+
+**🔑 关键发现: Supplier-Threshold 独立性**
+
+Supplier-threshold 机制在 bucketize.ts 中完全独立，不依赖 extraction 实现：
+- SUPPLIER_HARD_REJECT 在 29 个案例中成功拦截低质量匹配 (supplier f1 < 0.58)
+- Weighted scoring [0.7, 0.3] 优先考虑供应商名称匹配
+- 这验证了 "供应商 = 必要条件, 项目 = 辅助验证" 的设计原则
+
+**⚠️ Extraction 问题依然存在**
+
+v0.1.8 使用 v0.1.6 extraction logic，因此以下问题未解决：
+- FIELD_SIM_LOW_PROJECT 仍占失败案例 44.4% (67/151)
+- 多行表格布局解析不准确 (向上查找策略过于激进)
+- 这些问题已记录在 v0.1.9-extraction-fix spec 中
+
+**📊 配置差异影响分析**
+
+v0.1.8 使用 v0.1.7b config (vs v0.1.6 使用 v0.labs config)：
+- 新增 `document_field_labels` 和 `table_header_keywords` 字段
+- Extraction 行为略有不同 (例: baodingshiwuxingdianqi4100967040.txt 提取包含公司名前缀)
+- 但总体 KPI 保持一致 (71 exact, 32% 自动通过率)
+
+**💡 版本发布经验教训**
+
+1. **单一职责原则**: v0.1.8 只做一件事 (supplier-threshold salvage)，成功
+2. **回归测试基线**: v0.1.6 的 32% 成为重要的回归验证锚点
+3. **版本号策略**: 跳过 "v0.1.7c"，直接使用 v0.1.8 避免心理负担
+4. **配置版本化**: 保留 v0.1.7b config (9d2376d2) 使得代码打捞成为可能
+
+**🎯 下一步优化方向**
+
+v0.1.8 为 v0.1.9 extraction-fix 铺平了道路：
+- SUPPLIER_HARD_REJECT 已分流 29 个低质量案例
+- FIELD_SIM_LOW_PROJECT (67 次) 成为清晰的优化目标
+- 可以专注于修复 extraction logic 中的多行布局解析问题
+
+---
+
 ### v0.1.7a - CLI configuration priority fix (2025-11-18)
 
 **实施内容**:
