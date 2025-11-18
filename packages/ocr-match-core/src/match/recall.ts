@@ -133,8 +133,11 @@ export function recallWithPrefilter(
 
   const filteredWithScore: Array<{ id: string; overlap: number }> = [];
 
+  // 预先构建 id → row 映射，避免 O(N²) 查找
+  const rowMap = new Map(index.rows.map(r => [r.id, r]));
+
   for (const candidateId of allCandidateIds) {
-    const row = index.rows.find(r => r.id === candidateId);
+    const row = rowMap.get(candidateId);
     if (!row) continue;
 
     // 计算候选的 tokens

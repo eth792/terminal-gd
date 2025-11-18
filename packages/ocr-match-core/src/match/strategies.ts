@@ -3,7 +3,7 @@
  * 实现三种匹配策略：fast-exact、anchor、recall+rank
  */
 import type { InvertedIndex, DbRow } from '../indexer/types.js';
-import { recallByBothFields, lookupRows } from './recall.js';
+import { recallByBothFields, lookupRows, recallWithPrefilter } from './recall.js';
 import { scoreAndRank, type ScoredCandidate } from './rank.js';
 import { singleFieldScore, type Normalizer } from './similarity.js';
 
@@ -104,18 +104,15 @@ export function recallAndRank(
   topK = 3,
   normalizer?: Normalizer
 ): { candidates: ScoredCandidate[]; recalledCount: number } {
-  // 1. 召回候选 ID
-  const rowIds = recallByBothFields(q1, q2, index.inverted, index.meta.ngram_size);
+  // 1. 使用预过滤的召回策略
+  const { candidates, stats } = recallWithPrefilter(q1, q2, index, 5000, 2);
 
-  // 2. 查找完整的 DbRow
-  const candidates = lookupRows(rowIds, index.rows);
-
-  // 3. 打分并排序
+  // 2. 打分并排序
   const topCandidates = scoreAndRank(q1, q2, candidates, topK, normalizer);
 
   return {
     candidates: topCandidates,
-    recalledCount: candidates.length,
+    recalledCount: stats.before, // 保持向后兼容：返回过滤前的召回数
   };
 }
 
