@@ -2,7 +2,7 @@
 
 ## Phase 1: Data Structure Fix (Configuration Files)
 
-- [ ] 1.1 Create v0.1.7 configuration directory structure
+- [x] 1.1 Create v0.1.7 configuration directory structure
   - Files: `configs/v0.1.7/<sha>/` directory
   - Create new config version directory with SHA hash
   - Copy `normalize.user.json` from v0.labs as base
@@ -11,7 +11,7 @@
   - _Requirements: A1 (Configuration Immutability)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: DevOps Engineer specializing in configuration management | Task: Create new configuration directory `configs/v0.1.7/<sha>/` following configuration immutability principle from requirement A1, copying normalize.user.json from v0.labs/e7bef887 | Restrictions: NEVER modify configs/v0.labs/e7bef887/, use git hash as SHA identifier, maintain same directory structure | Success: New directory exists with normalize.user.json copied, git hash calculated for SHA, v0.labs remains untouched | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesCreated, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 1.2 Create cleaned label_alias.json
+- [x] 1.2 Create cleaned label_alias.json
   - File: `configs/v0.1.7/<sha>/label_alias.json`
   - Remove noise field labels (供应商联系人, 供应单位名称, etc.)
   - Keep only extraction target labels and OCR error variants
@@ -20,7 +20,7 @@
   - _Requirements: A1 (Label Alias Configuration Cleanup)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Data Engineer with OCR domain expertise | Task: Create cleaned label_alias.json following requirement A1, removing 供应商联系人 (noise field despite 188/222 frequency), keeping 供应商 (202/222), 工程名称 (207/222), and OCR variants like 供应尚, 侯应商, 工理名称, 工程名杆, T.程名称, 丁程名称 | Restrictions: Only include extraction TARGET fields, not all document fields, verify each label against grep validation results, include _dbColumnNames for DB mapping | Success: JSON validates, contains only supplier/project arrays with valid labels, no noise fields like 供应商联系人 or 采购订单供应商 | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesCreated, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 1.3 Create extended domain.json with document field labels
+- [x] 1.3 Create extended domain.json with document field labels
   - File: `configs/v0.1.7/<sha>/domain.json`
   - Add `document_field_labels` array (项目管理单位, 报装编号, etc.)
   - Add `table_header_keywords` array (序号, 物资名称, 单位, etc.)
@@ -30,7 +30,7 @@
   - _Requirements: A2 (Document Field Labels Exclusion), A3 (Table Body Truncation)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Domain Expert in OCR document structure | Task: Create extended domain.json following requirements A2 and A3, adding document_field_labels (项目管理单位 199/222, 报装编号 206/222, 供应商联系人, etc.) and table_header_keywords (序号 199/222, 物资名称 197/222, 单位, etc.) | Restrictions: Maintain existing anchors.project and noise_words arrays unchanged, document_field_labels are fields to STOP at (not extract), table_header_keywords need 2+ matches to trigger | Success: JSON validates, document_field_labels contains 12+ noise field labels, table_header_keywords contains 6+ table header indicators | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesCreated, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 1.4 Create new bucketize.json configuration file
+- [x] 1.4 Create new bucketize.json configuration file
   - File: `configs/v0.1.7/<sha>/bucketize.json`
   - Define supplierHardMin=0.58, autoPass=0.75, minReview=0.65
   - Define weights=[0.7, 0.3] (supplier 70%, project 30%)
@@ -40,7 +40,7 @@
   - _Requirements: B1 (Hard Supplier Threshold), B2 (Supplier-Weighted Scoring), B3 (Raised Score Thresholds)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Configuration Architect with matching algorithm expertise | Task: Create bucketize.json following requirements B1, B2, B3 with supplierHardMin=0.58, autoPass=0.75, minReview=0.65, weights=[0.7, 0.3], minFieldSim=0.60, minDeltaTop=0.03 | Restrictions: Ensure supplierHardMin <= minReview <= autoPass (validation constraint), weights must sum to 1.0, use exact values from design document | Success: JSON validates, constraints satisfied (0.58 <= 0.65 <= 0.75, 0.7+0.3=1.0), all threshold values present | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesCreated, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 1.5 Update latest.json pointer to new configuration
+- [x] 1.5 Update latest.json pointer to new configuration
   - File: `configs/latest.json`
   - Update path to `configs/v0.1.7/<sha>`
   - Update version to `v0.1.7`
@@ -50,7 +50,7 @@
   - _Requirements: A1 (Configuration Versioning)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Release Engineer managing configuration pointers | Task: Update configs/latest.json to point to new v0.1.7 configuration following requirement A1, updating path, version, and sha fields | Restrictions: Keep same JSON structure, use ISO 8601 format for created_at timestamp, verify target directory exists before updating | Success: latest.json points to v0.1.7/<sha>, can load new config via latest pointer, old v0.labs config still accessible via explicit path | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 1.6 Phase 1 Validation: Sidecar extraction accuracy test
+- [x] 1.6 Phase 1 Validation: Sidecar extraction accuracy test
   - Files: Test execution (no code changes)
   - Run extraction test on 19 sidecar-annotated files
   - Compare extracted fields with ground truth
@@ -62,7 +62,7 @@
 
 ## Phase 2: Schema Extension (Type Definitions)
 
-- [ ] 2.1 Extend DomainConfigSchema with new fields
+- [x] 2.1 Extend DomainConfigSchema with new fields
   - File: `packages/ocr-match-core/src/config/schema.ts`
   - Add `document_field_labels: z.array(z.string()).default([])`
   - Add `table_header_keywords: z.array(z.string()).default([])`
@@ -72,7 +72,7 @@
   - _Requirements: A2 (Document Field Labels), A3 (Table Body Truncation)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: TypeScript Developer with Zod schema expertise | Task: Extend DomainConfigSchema following requirements A2 and A3, adding document_field_labels and table_header_keywords arrays with default empty arrays for backward compatibility | Restrictions: Use z.array(z.string()).default([]) pattern, maintain existing fields (anchors, noise_words, stopwords) unchanged, ensure TypeScript strict mode passes | Success: Schema compiles, DomainConfig type includes new fields, old configs without new fields load with defaults | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 2.2 Create BucketizeConfigSchema with validation refinements
+- [x] 2.2 Create BucketizeConfigSchema with validation refinements
   - File: `packages/ocr-match-core/src/config/schema.ts`
   - Define BucketizeConfigSchema with all threshold fields
   - Add refinement: `supplierHardMin <= minReview <= autoPass`
@@ -82,7 +82,7 @@
   - _Requirements: B1 (Hard Supplier Threshold), B2 (Weights), B3 (Thresholds)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: TypeScript Developer with schema validation expertise | Task: Create BucketizeConfigSchema following requirements B1, B2, B3 with supplierHardMin, autoPass, minReview, minFieldSim, minDeltaTop, weights fields and refine() validations for threshold ordering and weight sum | Restrictions: Use z.number().min(0).max(1) for thresholds, z.tuple([z.number(), z.number()]) for weights, Math.abs(sum - 1.0) < 0.001 for float comparison | Success: Schema compiles, invalid configs (wrong order or weight sum) throw ZodError, valid configs parse correctly | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 2.3 Update FullConfig type to include BucketizeConfig
+- [x] 2.3 Update FullConfig type to include BucketizeConfig
   - File: `packages/ocr-match-core/src/config/schema.ts`
   - Add bucketize: BucketizeConfig to FullConfig interface
   - Export BucketizeConfig type
@@ -91,7 +91,7 @@
   - _Requirements: Configuration type safety_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: TypeScript Developer with module architecture expertise | Task: Update FullConfig interface to include optional bucketize field for backward compatibility, export BucketizeConfig type | Restrictions: Make bucketize optional with ? to not break existing code, update type inference to handle optional field, maintain all existing fields | Success: FullConfig includes bucketize?: BucketizeConfig, type exports correctly, existing code compiles without changes | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 2.4 Extend config/load.ts to load bucketize.json
+- [x] 2.4 Extend config/load.ts to load bucketize.json
   - File: `packages/ocr-match-core/src/config/load.ts`
   - Load `bucketize.json` from config directory
   - Provide DEFAULT_BUCKETIZE_CONFIG if file not found
@@ -101,7 +101,7 @@
   - _Requirements: Configuration loading with graceful degradation_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Backend Developer with config management expertise | Task: Extend loadConfig function to optionally load bucketize.json using same pattern as domain.json, returning defaults if not found for backward compatibility | Restrictions: Log warning if file not found (don't throw), use BucketizeConfigSchema.parse() for validation, maintain existing load behavior | Success: New v0.1.7 configs load bucketize.json, old v0.labs configs return defaults, validation errors logged with fallback to defaults | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, functions created, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 2.5 Phase 2 Validation: TypeScript compilation and schema tests
+- [x] 2.5 Phase 2 Validation: TypeScript compilation and schema tests
   - Files: Test execution
   - Run `pnpm -F ./packages/ocr-match-core build`
   - Verify zero TypeScript errors
@@ -113,7 +113,7 @@
 
 ## Phase 3: Extraction Logic Simplification
 
-- [ ] 3.1 Create shouldStopLookup helper function
+- [x] 3.1 Create shouldStopLookup helper function
   - File: `packages/ocr-match-core/src/extract/extractor.ts`
   - Implement triple-check mechanism (other field label + noise label + entity word ending)
   - Return boolean indicating whether to stop lookup
@@ -122,7 +122,7 @@
   - _Requirements: A4 (Cross-Field Exclusion Enhancement)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Algorithm Developer with text processing expertise | Task: Create shouldStopLookup(line, currentFieldLabels, allFieldLabels, documentFieldLabels) function following requirement A4, implementing triple-check: 1) has other field label, 2) has document field label, 3) ends with entity word (公司/有限/集团) | Restrictions: Function must be < 20 lines, return boolean only, no side effects, handle empty arrays gracefully | Success: Function returns true for lines with other labels/noise labels/entity endings, returns false for normal continuation lines, single responsibility maintained | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions created with signature and location, filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 3.2 Create isTableHeader helper function
+- [x] 3.2 Create isTableHeader helper function
   - File: `packages/ocr-match-core/src/extract/extractor.ts`
   - Check if line contains 2+ table header keywords
   - Return boolean for table boundary detection
@@ -131,7 +131,7 @@
   - _Requirements: A3 (Table Body Truncation)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Algorithm Developer with document structure expertise | Task: Create isTableHeader(line, keywords) function following requirement A3, counting keyword matches and returning true if count >= 2 | Restrictions: Function must be < 15 lines, simple keyword includes check, threshold is 2 (not 1) to avoid false positives | Success: Returns true for "序号 物资名称 单位 规格型号" (3 matches), returns false for "序号：12345" (1 match), handles empty keywords array | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions created, filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 3.3 Refactor extractField to use new helper functions
+- [x] 3.3 Refactor extractField to use new helper functions
   - File: `packages/ocr-match-core/src/extract/extractor.ts`
   - Replace inline conditionals with shouldStopLookup() calls
   - Add isTableHeader() check in downward lookup
@@ -141,7 +141,7 @@
   - _Requirements: A2, A3, A4 integration_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Refactoring Expert with clean code expertise | Task: Refactor extractField() to use shouldStopLookup() and isTableHeader() helpers, reducing from 86 lines to <= 50 lines, eliminating 6-level nesting | Restrictions: Maintain same extraction logic semantics, load new config fields with defaults for backward compatibility, ensure all existing tests pass | Success: extractField() is <= 50 lines, max 3-level nesting, uses helper functions consistently, existing extraction behavior preserved | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions modified, statistics showing line reduction, filesModified), then mark task as complete [x] in tasks.md_
 
-- [ ] 3.4 Update extract function signature to pass all field labels
+- [x] 3.4 Update extract function signature to pass all field labels
   - File: `packages/ocr-match-core/src/extract/extractor.ts`
   - Pass all labels (supplier + project) to extractField for cross-field checking
   - Pass document_field_labels for noise field detection
@@ -151,7 +151,7 @@
   - _Requirements: A2, A3, A4 integration_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: API Designer with function signature expertise | Task: Update extract() to pass additional parameters to extractField(), including all field labels and new config arrays | Restrictions: Maintain backward compatibility with default empty arrays, update ExtractConfig if needed, ensure TypeScript types match | Success: extractField receives all labels for cross-checking, new config fields passed correctly, existing callers don't break | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions modified, filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 3.5 Phase 3 Validation: 20-sample extraction test
+- [x] 3.5 Phase 3 Validation: 20-sample extraction test
   - Files: Test execution
   - Run extraction test on 20 diverse samples
   - Verify EXTRACT_EMPTY cases don't increase
@@ -163,7 +163,7 @@
 
 ## Phase 4: Bucketizer Simplification
 
-- [ ] 4.1 Add new failure reason enums
+- [x] 4.1 Add new failure reason enums
   - File: `packages/ocr-match-core/src/bucket/reasons.ts`
   - Add `SUPPLIER_HARD_REJECT = 'SUPPLIER_HARD_REJECT'`
   - Add `SCORE_TOO_LOW = 'SCORE_TOO_LOW'`
@@ -174,7 +174,7 @@
   - _Requirements: B4 (Eliminate SUPPLIER_DIFF_SAME_PROJECT Reason)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Type System Developer with enum expertise | Task: Add new failure reason enums to FailReason following requirement B4, keeping existing values for backward compatibility | Restrictions: Do NOT remove SUPPLIER_DIFF_SAME_PROJECT yet (do that in 4.4), use string literal values, maintain enum ordering | Success: Three new enums added, TypeScript compiles, existing code continues to work, new reasons have clear semantic meaning | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 4.2 Create applySupplierHardThreshold helper function
+- [x] 4.2 Create applySupplierHardThreshold helper function
   - File: `packages/ocr-match-core/src/bucket/bucketize.ts`
   - Simple comparison: `f1_score >= supplierHardMin`
   - Return boolean
@@ -183,7 +183,7 @@
   - _Requirements: B1 (Hard Supplier Threshold)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Algorithm Developer with threshold logic expertise | Task: Create applySupplierHardThreshold(f1_score, supplierHardMin) returning boolean following requirement B1, simple >= comparison | Restrictions: Function must be <= 5 lines, pure function with no side effects, handle edge case where f1_score equals threshold (should pass) | Success: Returns true for f1_score >= supplierHardMin, false otherwise, handles boundary values correctly | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions created, filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 4.3 Create calculateWeightedScore helper function
+- [x] 4.3 Create calculateWeightedScore helper function
   - File: `packages/ocr-match-core/src/bucket/bucketize.ts`
   - Calculate: `weights[0] * f1_score + weights[1] * f2_score`
   - Return number
@@ -192,7 +192,7 @@
   - _Requirements: B2 (Supplier-Weighted Scoring)_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Algorithm Developer with scoring logic expertise | Task: Create calculateWeightedScore(f1_score, f2_score, weights) returning weighted sum following requirement B2 | Restrictions: Function must be <= 5 lines, weights is [number, number] tuple, no rounding (return exact float) | Success: Returns correct weighted average (e.g., 0.7*0.62 + 0.3*0.96 = 0.722), handles [0.5, 0.5] correctly for backward compatibility testing | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions created, filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 4.4 Refactor bucketize to use new logic and remove SUPPLIER_DIFF_SAME_PROJECT
+- [x] 4.4 Refactor bucketize to use new logic and remove SUPPLIER_DIFF_SAME_PROJECT
   - File: `packages/ocr-match-core/src/bucket/bucketize.ts`
   - Remove Rule 3.5 (SUPPLIER_DIFF_SAME_PROJECT hack)
   - Add hard threshold check before scoring
@@ -203,7 +203,7 @@
   - _Requirements: B1, B2, B3, B4 integration_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Refactoring Expert with matching algorithm expertise | Task: Refactor bucketize() to remove SUPPLIER_DIFF_SAME_PROJECT logic (lines 54-62), add hard threshold check using applySupplierHardThreshold(), use calculateWeightedScore() for scoring, apply new thresholds from config | Restrictions: Load config.supplierHardMin, config.autoPass, config.minReview, config.weights from BucketConfig, maintain other rules (EXTRACT_EMPTY, NO_CANDIDATES, etc.), reduce from 7 rules to 5 | Success: SUPPLIER_DIFF_SAME_PROJECT logic deleted, hard threshold applied first, weighted scoring used, bucketize() is <= 60 lines with <= 5 rules | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (functions modified, filesModified, statistics showing line count and rule reduction), then mark task as complete [x] in tasks.md_
 
-- [ ] 4.5 Update BucketConfig interface to match new schema
+- [x] 4.5 Update BucketConfig interface to match new schema
   - File: `packages/ocr-match-core/src/bucket/bucketize.ts`
   - Add supplierHardMin, minReview, weights to BucketConfig interface
   - Update DEFAULT_BUCKET_CONFIG with new defaults
@@ -212,7 +212,7 @@
   - _Requirements: Type safety for bucketization_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: TypeScript Developer with interface design expertise | Task: Update BucketConfig interface to match BucketizeConfigSchema, add supplierHardMin, minReview, weights fields, update DEFAULT_BUCKET_CONFIG with v0.1.7 values | Restrictions: Maintain backward compatibility by keeping existing fields, make new fields have defaults in DEFAULT_BUCKET_CONFIG, ensure type compatibility with schema | Success: Interface matches schema definition, DEFAULT_BUCKET_CONFIG has all new values, TypeScript compiles | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 4.6 Phase 4 Validation: Full test with new thresholds
+- [x] 4.6 Phase 4 Validation: Full test with new thresholds
   - Files: Test execution
   - Run complete test on 222 files with new config
   - Verify auto_pass_rate >= 37% (vs 32% baseline)
@@ -224,7 +224,7 @@
 
 ## Phase 5: Documentation and Final Validation
 
-- [ ] 5.1 Update PROJECT_STATUS.md with v0.1.7 results
+- [x] 5.1 Update PROJECT_STATUS.md with v0.1.7 results
   - File: `docs/PROJECT_STATUS.md`
   - Update KPI table with new metrics
   - Update version information
@@ -234,7 +234,7 @@
   - _Requirements: Documentation consistency_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Documentation Engineer with project management expertise | Task: Run npm run update-docs with v0.1.7 test results, update KPI metrics, version info, and improvement notes | Restrictions: Use automation script, verify all metrics updated correctly, maintain markdown formatting | Success: PROJECT_STATUS.md reflects v0.1.7 results, KPI improvement documented (32% → 37%+), version history updated | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 5.2 Update implementation_record.md with v0.1.7 entry
+- [x] 5.2 Update implementation_record.md with v0.1.7 entry
   - File: `docs/implementation_record.md`
   - Add detailed v0.1.7 entry with technical changes
   - Document lessons learned from v0.1.7 disaster avoidance
@@ -244,7 +244,7 @@
   - _Requirements: Complete version documentation_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Technical Writer with version history expertise | Task: Add v0.1.7 entry to implementation_record.md following existing format, document configuration cleanup, threshold optimization, and incremental testing protocol | Restrictions: Follow existing entry format, include code line counts (extractField 86→50, bucketize 7→5 rules), reference spec workflow artifacts | Success: Entry added with all technical details, lessons learned documented, spec reference included | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesModified, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 5.3 Create migration guide for v0.1.6 to v0.1.7
+- [x] 5.3 Create migration guide for v0.1.6 to v0.1.7
   - File: `analysis/v0.1.7/migration_guide.md`
   - Document threshold changes and their rationale
   - Provide A/B testing instructions
@@ -254,7 +254,7 @@
   - _Requirements: Usability and migration path_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Technical Writer with migration expertise | Task: Create migration_guide.md documenting v0.1.6 to v0.1.7 changes, including threshold comparison table, A/B testing commands, and rollback instructions via latest.json pointer | Restrictions: Clear step-by-step instructions, include before/after examples, provide rollback safety net | Success: Guide covers all changes, A/B testing is straightforward, rollback procedure is clear and safe | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (filesCreated, statistics), then mark task as complete [x] in tasks.md_
 
-- [ ] 5.4 Final git commit with spec reference
+- [x] 5.4 Final git commit with spec reference
   - Files: All implementation files
   - Commit all code changes
   - Include spec implementation logs reference in commit message
@@ -264,7 +264,7 @@
   - _Requirements: Complete version control_
   - _Prompt: Implement the task for spec v0.1.7-matching-improvements, first run spec-workflow-guide to get the workflow guide then implement the task: Role: Release Engineer with git workflow expertise | Task: Create final git commit for v0.1.7 implementation, include reference to spec workflow implementation logs, tag as v0.1.7-rc1 for release candidate | Restrictions: Follow project commit message format, include Co-Authored-By, reference spec directory in commit message, create annotated tag | Success: All changes committed, commit message includes spec reference, v0.1.7-rc1 tag created | Instructions: Before starting, edit tasks.md to mark this task as in-progress [-]. After completing, use log-implementation tool to record artifacts (statistics for commit info), then mark task as complete [x] in tasks.md_
 
-- [ ] 5.5 Final validation: Regression test against v0.labs
+- [x] 5.5 Final validation: Regression test against v0.labs
   - Files: Test execution
   - Run A/B comparison: v0.labs vs v0.1.7
   - Verify no unexpected regressions
