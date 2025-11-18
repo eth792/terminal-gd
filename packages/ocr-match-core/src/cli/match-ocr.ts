@@ -86,32 +86,26 @@ async function main() {
           .option('autoPass', {
             type: 'number',
             description: 'Auto-pass threshold (overrides config bucketize.json)',
-            default: DEFAULT_BUCKET_CONFIG.autoPass,
           })
           .option('minFieldSim', {
             type: 'number',
             description: 'Minimum field similarity (overrides config bucketize.json)',
-            default: DEFAULT_BUCKET_CONFIG.minFieldSim,
           })
           .option('minDeltaTop', {
             type: 'number',
             description: 'Minimum delta between Top1 and Top2 (overrides config bucketize.json)',
-            default: DEFAULT_BUCKET_CONFIG.minDeltaTop,
           })
           .option('supplierHardMin', {
             type: 'number',
             description: 'Supplier hard threshold (overrides config bucketize.json)',
-            default: DEFAULT_BUCKET_CONFIG.supplierHardMin,
           })
           .option('minReview', {
             type: 'number',
             description: 'Review minimum score (overrides config bucketize.json)',
-            default: DEFAULT_BUCKET_CONFIG.minReview,
           })
           .option('weights', {
             type: 'string',
             description: 'Field weights (e.g., "0.7,0.3") (overrides config bucketize.json)',
-            default: '0.7,0.3',
           })
           .option('topk', {
             type: 'number',
@@ -122,11 +116,6 @@ async function main() {
             type: 'number',
             description: 'Maximum candidates to recall',
             default: 5000,
-          })
-          .option('weights', {
-            type: 'string',
-            description: 'Field weights (e.g., "0.5,0.5")',
-            default: '0.5,0.5',
           })
           .option('include-top3', {
             type: 'boolean',
@@ -262,38 +251,57 @@ async function main() {
       logger.info('cli.match-ocr', `✓ Found ${ocrFiles.length} files from directory scan`);
     }
 
-    // 4. 解析权重
-    const weights = args.weights!.split(',').map(Number) as [number, number];
-    if (weights.length !== 2 || weights.some(isNaN)) {
-      throw new Error(`Invalid weights format: ${args.weights}`);
-    }
+    // 4. 构建桶配置（三层 fallback: CLI → config → default）
+    const bucketConfig: {
+      autoPass: number;
+      minFieldSim: number;
+      minDeltaTop: number;
+      supplierHardMin: number;
+      minReview: number;
+      weights: [number, number];
+    } = {
+      autoPass: args.autoPass
+        ?? config.bucketize?.autoPass
+        ?? DEFAULT_BUCKET_CONFIG.autoPass,
 
-    // 5. 构建桶配置（CLI 参数优先于配置文件）
-    const bucketConfig = {
-      autoPass: args.autoPass!,
-      minFieldSim: args.minFieldSim!,
-      minDeltaTop: args.minDeltaTop!,
-      supplierHardMin: args.supplierHardMin!,
-      minReview: args.minReview!,
-      weights: weights,
+      minFieldSim: args.minFieldSim
+        ?? config.bucketize?.minFieldSim
+        ?? DEFAULT_BUCKET_CONFIG.minFieldSim,
+
+      minDeltaTop: args.minDeltaTop
+        ?? config.bucketize?.minDeltaTop
+        ?? DEFAULT_BUCKET_CONFIG.minDeltaTop,
+
+      supplierHardMin: (args.supplierHardMin
+        ?? config.bucketize?.supplierHardMin
+        ?? DEFAULT_BUCKET_CONFIG.supplierHardMin) as number,
+
+      minReview: (args.minReview
+        ?? config.bucketize?.minReview
+        ?? DEFAULT_BUCKET_CONFIG.minReview) as number,
+
+      weights: (args.weights
+        ? (() => {
+            const weights = args.weights.split(',').map(Number) as [number, number];
+            if (weights.length !== 2 || weights.some(isNaN)) {
+              throw new Error(`Invalid weights format: ${args.weights}`);
+            }
+            return weights;
+          })()
+        : (config.bucketize?.weights ?? DEFAULT_BUCKET_CONFIG.weights)) as [number, number],
     };
 
-    // 如果配置有 bucketize.json，记录其被覆盖的情况
-    if (config.bucketize) {
-      logger.info(
-        'cli.match-ocr',
-        `Config bucketize.json found: supplierHardMin=${config.bucketize.supplierHardMin}, autoPass=${config.bucketize.autoPass}, minReview=${config.bucketize.minReview}, weights=${config.bucketize.weights}`
-      );
-      logger.info(
-        'cli.match-ocr',
-        `CLI args override config for: autoPass=${bucketConfig.autoPass}, minFieldSim=${bucketConfig.minFieldSim}, minDeltaTop=${bucketConfig.minDeltaTop}, supplierHardMin=${bucketConfig.supplierHardMin}, minReview=${bucketConfig.minReview}, weights=${bucketConfig.weights}`
-      );
-    } else {
-      logger.info(
-        'cli.match-ocr',
-        `Using CLI args (no bucketize.json): autoPass=${bucketConfig.autoPass}, minFieldSim=${bucketConfig.minFieldSim}, minDeltaTop=${bucketConfig.minDeltaTop}, supplierHardMin=${bucketConfig.supplierHardMin}, minReview=${bucketConfig.minReview}, weights=${bucketConfig.weights}`
-      );
-    }
+    // 增强日志：记录每个参数的值来源
+    logger.info(
+      'cli.match-ocr',
+      `Bucket config resolved:\n` +
+      `  autoPass: ${bucketConfig.autoPass} (${args.autoPass !== undefined ? 'CLI' : config.bucketize?.autoPass !== undefined ? 'config' : 'default'})\n` +
+      `  minFieldSim: ${bucketConfig.minFieldSim} (${args.minFieldSim !== undefined ? 'CLI' : config.bucketize?.minFieldSim !== undefined ? 'config' : 'default'})\n` +
+      `  minDeltaTop: ${bucketConfig.minDeltaTop} (${args.minDeltaTop !== undefined ? 'CLI' : config.bucketize?.minDeltaTop !== undefined ? 'config' : 'default'})\n` +
+      `  supplierHardMin: ${bucketConfig.supplierHardMin} (${args.supplierHardMin !== undefined ? 'CLI' : config.bucketize?.supplierHardMin !== undefined ? 'config' : 'default'})\n` +
+      `  minReview: ${bucketConfig.minReview} (${args.minReview !== undefined ? 'CLI' : config.bucketize?.minReview !== undefined ? 'config' : 'default'})\n` +
+      `  weights: [${bucketConfig.weights}] (${args.weights ? 'CLI' : config.bucketize?.weights ? 'config' : 'default'})`
+    );
 
     const results = await matchOcrBatch(ocrFiles, index, config, bucketConfig);
 
@@ -322,7 +330,7 @@ async function main() {
         minDeltaTop: bucketConfig.minDeltaTop,
         topk: args.topk!,
         max_cand: args.maxCand!,
-        weights,
+        weights: bucketConfig.weights,
       },
       elapsed_ms: elapsed,
     };

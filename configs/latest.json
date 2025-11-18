@@ -1,7 +1,7 @@
 {
-  "path": "configs/v0.1.7/373c0c28",
-  "version": "v0.1.7",
-  "sha": "373c0c28",
-  "created_at": "20251117",
-  "note": "v0.1.7: Configuration cleanup, extraction boundaries, and supplier-weighted scoring"
+  "path": "configs/v0.1.7b/9d2376d2",
+  "version": "v0.1.7b",
+  "sha": "9d2376d2",
+  "created_at": "20251118",
+  "note": "v0.1.7b: Fixed label_alias.json - restored missing project aliases (项目定义号 etc.)"
 }

@@ -1,0 +1,8 @@
+{
+  "supplierHardMin": 0.58,
+  "autoPass": 0.75,
+  "minReview": 0.65,
+  "minFieldSim": 0.60,
+  "minDeltaTop": 0.03,
+  "weights": [0.7, 0.3]
+}
