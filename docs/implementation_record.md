@@ -7,9 +7,10 @@
 ## 🔗 快速导航
 
 ### 最新版本
-- **v0.1.9a** (2025-11-20) - Supplier Perfect Match Bypass，55.4% 自动通过率 (+13.1%)
+- **v0.1.9b** (2025-11-20) - Two-Column Layout Fix，59.0% 自动通过率 (+3.6%)
 
 ### 重要版本
+- **v0.1.9b** (2025-11-20) - 59.0% 自动通过率，两列布局提取修复 (+3.6%)
 - **v0.1.9a** (2025-11-20) - 55.4% 自动通过率，DELTA_TOO_SMALL 优化 (+13.1%)
 - **v0.1.9** (2025-11-20) - 42.3% 自动通过率，Multi-Excel Support (+10.3%)
 - **[v0.1.6](../analysis/v0.1.6/v0.1.6_实测报告.md)** (2025-11-13) - 32.0% 自动通过率，发现P0级提取逻辑问题
@@ -277,6 +278,96 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 - **位置**: 在 Rule 5（高置信度旁路）之后，Rule 6（delta 检查）之前
 
 **Git Commit**: `待提交` - feat(bucketize): add supplier perfect match bypass rule
+
+---
+
+### v0.1.9b - Two-Column Layout Extraction Fix (2025-11-20)
+
+**实施内容**:
+- 修复两列布局提取逻辑，从下一行的右列位置提取值
+- 处理两种模式：(1) 下一行整体深缩进，(2) 当前标签在右列时从下一行相同位置提取
+- 阈值：当前行缩进 >= 45 表示右列标签
+
+**版本定位**: SUPPLIER_HARD_REJECT 优化 - 修复两列布局提取错误
+
+**实际效果**: ✅ **成功 - Exact 123 → 131 (+6.5%)**
+
+#### 测试结果对比
+
+| 版本 | Exact | Review | Fail | 自动通过率 | 运行 ID |
+|------|-------|--------|------|------------|---------|
+| v0.1.9a (baseline) | 123 (55.4%) | 17 (7.7%) | 82 (36.9%) | 55.4% | `run_20251120_01_38` |
+| **v0.1.9b** | **131 (59.0%)** | **16 (7.2%)** | **75 (33.8%)** | **59.0%** | `run_20251120_02_27` |
+
+**改善幅度**:
+- ✅ Exact +8 (+6.5% vs baseline)
+- ✅ Fail -7 (-8.5% vs baseline)
+- ✅ Auto-pass rate +3.6%
+- ✅ SUPPLIER_HARD_REJECT: 28 → 21 (-25%)
+
+#### 技术洞察
+
+**Linus Ultrathink Five-Layer Analysis**:
+
+1. **数据结构问题** → 代码假设 label:value 在同一行，但两列布局中它们在不同行
+2. **特殊情况识别** → 需要区分两种模式：下一行整体深缩进 vs 只有右列部分深缩进
+3. **复杂度审查** → 简单的缩进阈值检查（45/50 字符）无需复杂算法
+4. **破坏性分析** → 新逻辑在旧逻辑之前，只在值为空时触发，不影响现有案例
+5. **实用性验证** → 7/28 SUPPLIER_HARD_REJECT 案例被修复（25%）
+
+**两列布局模式**:
+
+典型 OCR 文档结构：
+```
+行3:                                              供应商：
+行4: 报装编号：  20210604                                    北京四方继保工程技术有限公司
+```
+
+- 左列：字符位置 0-45
+- 右列：字符位置 46+
+- 当 "供应商：" 在行3的右列（缩进>=45），值在行4的右列（相同位置）
+
+**Linus 判断**:
+> "Good code has no special cases. 两列布局不是特殊情况，而是 OCR 文档的常见格式。我们的数据结构（行级扫描）需要增加列级感知。"
+
+#### 代码变更
+
+**文件**: `packages/ocr-match-core/src/extract/extractor.ts`
+
+**变更**: 修改两列布局处理逻辑 (lines 83-109)
+
+```typescript
+// v0.1.9b: 两列布局处理 - 当标签后值为空时，检查下一行对应列的值
+if (value.length === 0 && i + 1 < lines.length) {
+  const currentLineRaw = linesRaw[i];
+  const currentIndent = currentLineRaw.length - currentLineRaw.trimStart().length;
+  const nextLineRaw = linesRaw[i + 1];
+  const nextLine = nextLineRaw.trim();
+  const nextIndent = nextLineRaw.length - nextLineRaw.trimStart().length;
+
+  const hasCurrentLabel = labels.some(l => nextLine.includes(l));
+
+  if (!hasCurrentLabel && nextLine.length > 0) {
+    if (nextIndent >= 50) {
+      // Case 1: 下一行整体深度缩进（下一行只有右列内容）
+      value = nextLine;
+    } else if (currentIndent >= 45 && nextLineRaw.length > currentIndent) {
+      // Case 2: 当前标签在右列（缩进>=45），从下一行的右列位置提取
+      const rightPortion = nextLineRaw.substring(currentIndent).trim();
+      if (rightPortion.length > 0 && !labels.some(l => rightPortion.includes(l))) {
+        value = rightPortion;
+      }
+    }
+  }
+}
+```
+
+**设计理由**:
+- **Case 1**: 下一行整体深缩进（>= 50）- 整行是右列内容
+- **Case 2**: 当前标签在右列（>= 45），从下一行相同位置提取
+- **防护**: 检查提取值不包含其他标签
+
+**Git Commit**: `待提交` - feat(extractor): fix two-column layout extraction for SUPPLIER_HARD_REJECT
 
 ---
 

@@ -80,6 +80,34 @@ function extractField(lines: string[], linesRaw: string[], labels: string[], noi
       // 移除标签后的冒号、等号等分隔符
       value = value.replace(/^[:：=\s]+/, '');
 
+      // v0.1.9b: 两列布局处理 - 当标签后值为空时，检查下一行对应列的值
+      // 针对 OCR 文档的典型布局：
+      // - Case 1: 下一行整体深度缩进（只有右列内容）
+      // - Case 2: 当前标签在右列，从下一行的相同位置（右列）提取
+      // 示例：行3 "              供应商：" → 行4 右列 "北京四方继保工程技术有限公司"
+      if (value.length === 0 && i + 1 < lines.length) {
+        const currentLineRaw = linesRaw[i];
+        const currentIndent = currentLineRaw.length - currentLineRaw.trimStart().length;
+        const nextLineRaw = linesRaw[i + 1];
+        const nextLine = nextLineRaw.trim();
+        const nextIndent = nextLineRaw.length - nextLineRaw.trimStart().length;
+
+        const hasCurrentLabel = labels.some(l => nextLine.includes(l));
+
+        if (!hasCurrentLabel && nextLine.length > 0) {
+          if (nextIndent >= 50) {
+            // Case 1: 下一行整体深度缩进（下一行只有右列内容）
+            value = nextLine;
+          } else if (currentIndent >= 45 && nextLineRaw.length > currentIndent) {
+            // Case 2: 当前标签在右列（缩进>=45），从下一行的右列位置提取
+            const rightPortion = nextLineRaw.substring(currentIndent).trim();
+            if (rightPortion.length > 0 && !labels.some(l => rightPortion.includes(l))) {
+              value = rightPortion;
+            }
+          }
+        }
+      }
+
       // 智能向上查找策略（检测表格错位）：
       // 策略1：上一行有深度缩进（>= 60 个空格），是表格右列的明显特征
       // 策略2：标签后值太短（< 5 字符）
