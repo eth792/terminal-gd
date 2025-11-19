@@ -160,21 +160,18 @@ export async function buildIndex(
 
     const { columns, rows: rawRows } = await parseDbFile(dbFile);
 
-    // 验证列名一致性
+    // 记录列信息（用于 meta，不再验证列名一致性）
     if (firstFileColumns === null) {
       firstFileColumns = columns;
-    } else {
-      if (columns.join(',') !== firstFileColumns.join(',')) {
-        throw new Error(
-          `Column mismatch between files!\n` +
-          `  First file: ${firstFileColumns.slice(0, 5).join(', ')}...\n` +
-          `  Current file (${path.basename(dbFile)}): ${columns.slice(0, 5).join(', ')}...\n` +
-          `  All DB files must have identical column names.`
-        );
-      }
     }
 
-    // 查找列索引（只在第一个文件执行）
+    // 记录文件列数（调试用）
+    logger.info(
+      'indexer.parse',
+      `File "${path.basename(dbFile)}" has ${columns.length} columns`
+    );
+
+    // 查找列索引（每个文件独立解析）
     if (resolvedIndices === null) {
       // Priority chain: labelAliasConfig > legacy params > defaults
       const dbColumnNames = labelAliasConfig?._dbColumnNames ?? {
@@ -183,6 +180,27 @@ export async function buildIndex(
       };
 
       resolvedIndices = resolveIndexedColumns(columns, dbColumnNames);
+
+      // 验证必需字段能够解析
+      if (resolvedIndices.supplierIdx === -1) {
+        throw new Error(
+          `Cannot resolve 'supplier' field in ${path.basename(dbFile)}\n` +
+          `  Tried aliases: ${dbColumnNames.supplier?.join(', ') || field1Column}\n` +
+          `  Available columns (first 10): ${columns.slice(0, 10).join(', ')}...\n` +
+          `  Total columns: ${columns.length}`
+        );
+      }
+
+      if (resolvedIndices.projectIdx === -1) {
+        throw new Error(
+          `Cannot resolve 'project' field in ${path.basename(dbFile)}\n` +
+          `  Tried aliases: ${dbColumnNames.project?.join(', ') || field2Column}\n` +
+          `  Available columns (first 10): ${columns.slice(0, 10).join(', ')}...\n` +
+          `  Total columns: ${columns.length}`
+        );
+      }
+
+      // order 字段是可选的，不报错
       logger.info(
         'indexer.resolve',
         `Resolved columns: supplier=${resolvedIndices.supplierIdx}, project=${resolvedIndices.projectIdx}, order=${resolvedIndices.orderIdx ?? 'N/A'}`

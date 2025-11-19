@@ -1,7 +1,7 @@
 {
-  "path": "configs/v0.1.7b/9d2376d2",
-  "version": "v0.1.7b",
-  "sha": "9d2376d2",
-  "created_at": "20251118",
-  "note": "v0.1.7b: Fixed label_alias.json - restored missing project aliases (项目定义号 etc.)"
+  "path": "configs/v0.1.9/c358299a",
+  "version": "v0.1.9",
+  "sha": "c358299a",
+  "created_at": "20251120",
+  "note": "v0.1.9: Fixed DB column mapping - supplier now correctly maps to '供应单位名称' (Column V/Index 21)"
 }
