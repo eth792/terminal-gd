@@ -1,12 +1,17 @@
 # Spec-Workflow 工作流指南
 
-**版本**: v2.0
+**版本**: v2.1
 **最后更新**: 2025-11-19
 **适用范围**: 所有使用 spec-workflow 的功能开发和重构
 
+**v2.1 更新内容** (重要修正):
+- ✅ **修正 Task 工作流**：不再强制 Task ↔ Commit 1:1 映射
+- ✅ **保持正常 Git 习惯**：小步提交（试错、重构、bug fix 各一个 commit）
+- ✅ **Task ID 追溯**：每个 commit message 包含 Task ID，形成 Task ↔ Commits 多对多映射
+- ✅ **Implementation Log**：反向记录 Task → Commits 关系
+
 **v2.0 更新内容**:
-- ✅ 明确 Git 提交策略（R/D/T 一起提交 + Task 按原子性独立提交）
-- ✅ 添加 Task 三连流程（更新 tasks.md + git commit + TodoWrite）
+- ✅ 明确 Git 提交策略（R/D/T 一起提交）
 - ✅ Dashboard 自动启动说明
 
 ---
@@ -172,29 +177,50 @@ Spec-workflow 使用 **两个独立的任务追踪系统**，各有不同职责�
 ❌ **错误行为**：任务完成后只标记 TodoWrite，不更新 tasks.md
 ✅ **正确行为**：任务完成后**必须**更新 tasks.md 状态为 `[x]`
 
-### 🔄 Task 三连流程（强制执行）
+### 🔄 正确的 Task 工作流
 
-**每个 task 完成后必须立即执行以下三步**：
+**核心原则**：Task 是逻辑单元（业务层面），Commit 是代码单元（技术层面），不应强制 1:1 映射。
+
+#### 开发过程（正常 Git 习惯）
 
 ```markdown
-1️⃣ 更新 tasks.md 状态为 [x]
-   - 使用 Edit 工具修改 .spec-workflow/specs/<spec-name>/tasks.md
-   - 将对应 task 的 [ ] 改为 [x]
+1️⃣ 开始 task
+   - TodoWrite 标记 in_progress
+   - 明确 task 目标
 
-2️⃣ Git commit（代码 + tasks.md 一起提交）
-   - git add <modified-files>
-   - git add .spec-workflow/specs/<spec-name>/tasks.md
-   - git commit -m "type(scope): description (Task X.Y)"
+2️⃣ 开发过程（小步提交）
+   - 按正常 Git 习惯开发（试错、重构、bug fix）
+   - 每个 commit message 包含 Task ID：
+     ✅ "refactor(extractor): simplify line scanning (Task 1.1)"
+     ✅ "fix(extractor): handle empty line edge case (Task 1.1)"
+     ✅ "test(extractor): add unit tests (Task 1.1)"
+   - 多个 commits 可以标记同一个 Task ID
+   - 测试失败立即回滚（Git 小步提交的优势）
 
-3️⃣ TodoWrite 标记 completed
-   - 更新 TodoWrite 状态（AI 内部追踪）
-   - 确保两层系统同步
+3️⃣ 完成 task
+   - 更新 tasks.md 状态为 [x]
+   - Git commit tasks.md 更新：
+     • 可独立 commit："chore(spec): mark Task 1.1 completed"
+     • 或合并到最后一个 task commit
+   - TodoWrite 标记 completed
+
+4️⃣ Phase 完成后（可选）
+   - 如果 spec 按 phase 组织，可以 phase 级别批量更新 tasks.md
+   - "chore(spec): complete Phase 1 (Task 1.1-1.3)"
+
+5️⃣ 所有 tasks 完成后
+   - 使用 log-implementation 记录 Implementation Log
+   - 在 Implementation Log 中反向记录 Task → Commits 映射
+   - 示例：
+     Task 1.1: commits abc1234, def5678, ghi9012
+     Task 1.2: commits jkl3456, mno7890
 ```
 
 **关键保证**：
-- ✅ 代码和状态**原子化提交**（never out of sync）
-- ✅ 遵循 "Rule 2: 失败立即停止"（测试失败可精确回滚）
-- ✅ Git history 成为精确的进度追踪器
+- ✅ **保持 Git 最佳实践**：小步提交 > 大步提交（更容易 review 和回滚）
+- ✅ **Task ID 可追溯**：每个 commit message 包含 Task ID
+- ✅ **灵活性**：Task ↔ Commits 多对多映射，符合实际开发
+- ✅ **Implementation Log**：反向记录形成完整追踪链
 
 ### 📖 典型工作流示例
 
@@ -209,34 +235,46 @@ AI 使用 TodoWrite 创建临时任务清单：
 - [ ] 创建 docs/TECHNICAL_DECISIONS.md
 - [ ] 验证所有决策已记录
 
-### Step 2: 开发过程（更新 TodoWrite）
-AI 边开发边更新：
-- [x] 读取 CLAUDE.md lines 595-641
-- [x] 提取技术决策内容
-- [x] 按 decision record 模板组织
-- [x] 创建 docs/TECHNICAL_DECISIONS.md
-- [x] 验证所有决策已记录
+### Step 2: 开发过程（正常小步提交）
 
-### Step 3: Task 三连流程（关键！）
+**Commit 1: 创建文档骨架**
+git add docs/TECHNICAL_DECISIONS.md
+git commit -m "docs(tech-decisions): create initial structure (Task 1.1)
+
+Added markdown skeleton with sections for 4 decisions.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+**Commit 2: 填充 Decision 1-2**
+git add docs/TECHNICAL_DECISIONS.md
+git commit -m "docs(tech-decisions): add Monorepo and Config decisions (Task 1.1)
+
+Extracted from CLAUDE.md lines 595-620.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+**Commit 3: 填充 Decision 3-4**
+git add docs/TECHNICAL_DECISIONS.md
+git commit -m "docs(tech-decisions): add Run Bundle and Pipeline decisions (Task 1.1)
+
+Extracted from CLAUDE.md lines 621-641.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+### Step 3: 完成任务
 
 **3.1 更新 tasks.md 状态**
 📝 Edit .spec-workflow/specs/<spec-name>/tasks.md:
 - [ ] 1.1 Create TECHNICAL_DECISIONS.md  → - [x] 1.1 Create TECHNICAL_DECISIONS.md
 
-**3.2 Git commit（代码 + tasks.md 一起）**
-git add docs/TECHNICAL_DECISIONS.md
+**3.2 提交 tasks.md 更新**
 git add .spec-workflow/specs/<spec-name>/tasks.md
-git commit -m "docs(tech-decisions): create TECHNICAL_DECISIONS.md (Task 1.1)
+git commit -m "chore(spec): mark Task 1.1 completed
 
-Created comprehensive technical decisions log with 4 key decisions:
-- Decision 1: Monorepo structure
-- Decision 2: Versioned configurations
-- Decision 3: Immutable run bundles
-- Decision 4: Four-stage processing pipeline
-
-Extracted from CLAUDE.md lines 595-641 following design.md template.
-
-Updated tasks.md status: Task 1.1 [x] completed.
+Task 1.1 implemented in commits: abc1234, def5678, ghi9012
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>"
@@ -244,67 +282,90 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **3.3 TodoWrite 标记 completed**
 （AI 内部更新，确保两层系统同步）
 
-### Step 4: 运行测试验证（如适用）
-- 如果有测试，立即运行
-- 成功 → 进入下一个 task
-- 失败 → 立即回滚此 commit，分析原因
+### Step 4: Implementation Log（所有 tasks 完成后）
+
+使用 log-implementation 记录：
+- Task 1.1 → commits: abc1234, def5678, ghi9012
+- Task 1.2 → commits: jkl3456, mno7890
+- 形成 Task ↔ Commits 完整映射
 ```
 
 ---
 
 ## Commit 规范
 
-### 基本原则（方案 A：明确化版本）
+### 基本原则
 
-**每个 task 完成后必须遵循以下步骤**：
+**开发过程保持正常 Git 习惯，通过 Task ID 建立追溯链**：
 
 ```markdown
 1️⃣ 小步 commit 开发
    - 遵循 Git 最佳实践
-   - 每个逻辑单元一个 commit
+   - 每个逻辑单元一个 commit（试错、重构、bug fix 各一个 commit）
    - Commit message 清晰描述变更
 
-2️⃣ Commit message 标记 task ID
+2️⃣ Commit message 必须标记 Task ID
    - 格式: "type(scope): description (Task X.Y)"
-   - 示例: "feat(docs): create RELEASE_WORKFLOW.md (Task 1.2)"
+   - 示例:
+     • "refactor(extractor): simplify line scanning (Task 1.1)"
+     • "fix(extractor): handle empty line edge case (Task 1.1)"
+     • "test(extractor): add unit tests (Task 1.1)"
    - 目的: 可追溯任务到具体代码变更
+   - 多个 commits 可以标记同一个 Task ID
 
-3️⃣ **完成任务后立即更新 tasks.md 状态** ⬅️ 新增明确要求
+3️⃣ 完成任务后更新 tasks.md 状态
    - 必须: 将 tasks.md 中对应任务标记从 [ ] 改为 [x]
-   - 时机: 任务代码 commit 后立即执行
-   - 方式: 使用 Edit 工具修改 tasks.md
-   - 提交: 可独立 commit 或合并到 task 完成 commit
+   - 时机: 任务所有相关 commits 完成后
+   - 提交方式:
+     • 独立 commit: "chore(spec): mark Task X.Y completed"
+     • 或 Phase 级别批量更新: "chore(spec): complete Phase 1 (Task 1.1-1.3)"
 
-4️⃣ （可选）使用 log-implementation 记录详细实施日志
-   - 适用场景: 复杂实施需要详细记录时
+4️⃣ 所有 tasks 完成后使用 log-implementation
    - 工具: mcp__spec-workflow__log-implementation
    - 内容: artifacts (APIs, components, functions, classes, integrations)
+   - 反向记录: Task → Commits 映射关系
 ```
 
 ### Commit Message 模板
 
 ```bash
-# 单个 task 完成
-git commit -m "type(scope): description (Task X.Y)
+# Task 开发过程中的多个 commits（正常小步提交）
+git commit -m "refactor(scope): simplify logic (Task X.Y)
 
-[详细说明]
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# 多个 task 合并（同一类型）
-git commit -m "type(scope): description (Task X.Y-X.Z)
-
-[详细说明，列出每个 task]
+[详细说明这个重构的变更]
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-# tasks.md 状态更新（独立 commit）
-git commit -m "chore(spec): update Task X.Y status to completed
+git commit -m "fix(scope): handle edge case (Task X.Y)
 
-Task X.Y has been implemented and committed. Updating tasks.md status
-marker from [ ] to [x] for dashboard tracking.
+[详细说明修复的问题]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+git commit -m "test(scope): add unit tests (Task X.Y)
+
+[详细说明测试覆盖]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# tasks.md 状态更新（Task 完成后）
+git commit -m "chore(spec): mark Task X.Y completed
+
+Task X.Y implemented in commits: abc1234, def5678, ghi9012
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Phase 级别批量更新（可选）
+git commit -m "chore(spec): complete Phase 1 (Task 1.1-1.3)
+
+All Phase 1 tasks have been implemented:
+- Task 1.1: commits abc1234, def5678
+- Task 1.2: commits ghi9012, jkl3456
+- Task 1.3: commits mno7890
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>"
@@ -315,30 +376,37 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 #### ❌ 错误示例（忘记更新 tasks.md）
 
 ```bash
-# 实施了 Task 1.1, 1.2, 1.3
-git log --oneline -3
-b6cd8a23 docs(tech-decisions): create TECHNICAL_DECISIONS.md (Task 1.1)
-0f527829 docs(workflow): create RELEASE_WORKFLOW.md (Task 1.2)
-07728108 docs(status): enhance PROJECT_STATUS.md (Task 1.3)
+# 实施了 Task 1.1（包含 5 个 commits）
+git log --oneline -5
+e3f4g5h6 test(extractor): add edge case tests (Task 1.1)
+d2e3f4g5 fix(extractor): handle empty lines (Task 1.1)
+c1d2e3f4 refactor(extractor): simplify scanning (Task 1.1)
+b0c1d2e3 feat(extractor): add line parser (Task 1.1)
+a9b0c1d2 docs(extractor): add function comments (Task 1.1)
 
-# tasks.md 仍然全是 [ ] pending
+# tasks.md 仍然显示 [ ] 1.1 pending
 # Dashboard 显示: 0% 完成
 # 问题: 代码完成了，但正式追踪系统不知道！
 ```
 
-#### ✅ 正确示例（及时更新 tasks.md）
+#### ✅ 正确示例（正常小步提交 + tasks.md 更新）
 
 ```bash
-# Phase 1 完成后立即更新
-git log --oneline -4
-07728108 docs(status): enhance PROJECT_STATUS.md (Task 1.3)
-0f527829 docs(workflow): create RELEASE_WORKFLOW.md (Task 1.2)
-b6cd8a23 docs(tech-decisions): create TECHNICAL_DECISIONS.md (Task 1.1)
-8a9b3c1d chore(spec): update Phase 1 tasks status to completed
+# Task 1.1 开发过程（5 个 commits）+ tasks.md 更新
+git log --oneline -6
+f5g6h7i8 chore(spec): mark Task 1.1 completed
+e3f4g5h6 test(extractor): add edge case tests (Task 1.1)
+d2e3f4g5 fix(extractor): handle empty lines (Task 1.1)
+c1d2e3f4 refactor(extractor): simplify scanning (Task 1.1)
+b0c1d2e3 feat(extractor): add line parser (Task 1.1)
+a9b0c1d2 docs(extractor): add function comments (Task 1.1)
 
-# tasks.md 中 Task 1.1, 1.2, 1.3 都标记为 [x]
-# Dashboard 显示: Phase 1 完成 (3/3)
-# 成功: 代码和追踪系统同步！
+# tasks.md 中 Task 1.1 标记为 [x]
+# Dashboard 显示: Task 1.1 完成
+# 成功:
+#   - 保持了 Git 最佳实践（小步提交）
+#   - 每个 commit 都可追溯到 Task 1.1
+#   - tasks.md 同步更新
 ```
 
 ---
@@ -467,67 +535,47 @@ git commit -m "docs(spec/spec-name): add complete spec documentation"
 
 ---
 
-### 错误 3: 批量更新 tasks.md（不及时）
+### 错误 3: Commit message 缺少 Task ID
 
 **症状**:
-- 完成多个 tasks 后才一次性更新 tasks.md
-- 中间状态无法在 Dashboard 看到
-- 如果出错，难以定位哪个 task 有问题
-
-**原因**:
-- 为了"省事"批量更新
-- 不理解及时更新的价值
-
-**解决**:
-- 遵循"完成一个 task，立即更新 tasks.md"原则
-- 或至少在每个 Phase 完成后更新
-
-**预防**:
-- 使用 Phase 级检查点
-- 养成"task commit → tasks.md update"的习惯
-
----
-
-### 错误 4: Commit message 缺少 task ID
-
-**症状**:
-- Commit message 只有描述，没有 task ID
-- 无法追溯代码变更对应哪个 task
+- 开发过程中的多个 commits 没有标记 Task ID
+- 无法追溯哪些 commits 属于哪个 task
 - Implementation Log 无法反向记录
 
 **原因**:
-- 忘记添加 task ID
-- 不理解 task ID 的追溯价值
+- 忘记添加 Task ID
+- 不理解 Task ID 的追溯价值
 
 **解决**:
-```bash
-# 检查最近 commits 的 task ID
-git log --oneline -10
-
-# 如果遗漏，可以 amend（仅限最新 commit）
-git commit --amend -m "type(scope): description (Task X.Y)
-..."
-```
+- 每个 commit message 必须包含 Task ID
+- 格式: "type(scope): description (Task X.Y)"
+- 即使是小的 bug fix 也要标记
 
 **预防**:
 - 使用 commit message 模板
-- Commit 前检查是否包含 task ID
+- Commit 前检查是否包含 Task ID
 
 ---
 
 ## 最佳实践
 
-### 1. 及时同步两层系统
+### 1. 保持正常 Git 习惯 + Task ID 追溯
 
 ```markdown
-**开发中**: 使用 TodoWrite 拆解任务、追踪进度
-**完成后**: 立即更新 tasks.md 状态
+**开发中**:
+- 使用 TodoWrite 拆解任务、追踪进度
+- 按正常 Git 习惯小步提交（试错、重构、bug fix）
+- 每个 commit message 必须包含 Task ID
+
+**完成后**:
+- 更新 tasks.md 状态
+- Git commit tasks.md 更新（独立 commit 或 Phase 级别批量更新）
+- TodoWrite 标记 completed
 
 理想节奏:
-- 完成 Task X.Y 的代码
-- Git commit (包含 Task X.Y)
-- Edit tasks.md (标记 Task X.Y 为 [x])
-- Git commit tasks.md 更新（或合并到上一步）
+- 开发 Task X.Y（多个 commits，都标记 Task X.Y）
+- Task 完成后更新 tasks.md（一个 commit）
+- 所有 tasks 完成后使用 log-implementation 反向记录
 ```
 
 ### 2. Phase 级检查强制执行
