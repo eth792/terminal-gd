@@ -71,6 +71,120 @@ implementation_record.md 的版本条目由 `npm run update-docs` 自动生成�
 
 ## 版本历史
 
+### v0.2.0 - Hybrid F2 Matching (FAILED) (2025-11-19)
+
+**实施内容**:
+- 引入 LCS (Longest Common Substring) 算法优化项目名称匹配（F2）
+- 实现 `projectFieldSimilarity()`: 混合算法 (20% Lev + 40% Jac + 40% LCS)
+- 修复 `lcsRatio()` 归一化公式：Math.max() → Math.min()（奖励完整子串匹配）
+- 集成到 `rank.ts` 和 `strategies.ts` 的 anchor 策略
+
+**版本定位**: F2 算法优化 - 尝试突破项目名称匹配瓶颈（F2 比 F1 低 0.142）
+
+**实际效果**: ❌ **失败 - Exact 56 (-21% vs baseline 71)**
+
+#### 测试结果对比
+
+| 版本 | Exact | Review | Fail | 自动通过率 | 运行 ID |
+|------|-------|--------|------|------------|---------|
+| v0.1.8 (baseline) | 71 (32%) | 17 (7.7%) | 134 (60.4%) | 32% | `run_20251118_13_46` |
+| v0.2.0 (Math.max) | 49 (22.1%) | 59 (26.6%) | 114 (51.4%) | 22.1% | (first attempt) |
+| **v0.2.0 (Math.min)** | **56 (25.2%)** | **40 (18.0%)** | **126 (56.8%)** | **25.2%** | `run_20251119_22_07` |
+
+**回退幅度**:
+- ❌ Exact -15 (-21% vs baseline)
+- ❌ Fail +13 (+11% vs baseline)
+- ❌ DELTA_TOO_SMALL 激增 +19 (21 → 40)
+- ✅ FIELD_SIM_LOW_PROJECT 改善 -12 (69 → 57)
+
+#### 失败原因分析
+
+**根本问题**（Linus Five-Layer Analysis）:
+
+1. **算法设计缺陷**:
+   - LCS "容忍子串匹配" 特性降低了 Top-1/Top-2 区分度
+   - Jac + LCS 权重过高（0.8），导致相似候选分数接近
+   - Levenshtein 权重过低（0.2），丧失字符级判别能力
+
+2. **权重配置不当**:
+   - 降低 Lev 权重是为了减少长度差异惩罚
+   - 但同时降低了精确匹配的判别能力
+   - 结果：F2 改善（FIELD_SIM_LOW_PROJECT -12），但判别能力下降（DELTA_TOO_SMALL +19）
+
+3. **未解决根本问题**:
+   - 标点符号污染：单引号 `''`、括号 `()` 未被移除
+   - DB 数据质量：额外信息（如"（光谷P（2023）028地块）"）打断匹配
+   - OCR 提取不完整：根本问题在提取阶段，算法无法修复
+
+#### 技术洞察
+
+**为什么 Math.min() 比 Math.max() 好，但仍然失败？**
+
+```typescript
+// Math.max() 过度惩罚
+lcsRatio("ABC", "ABCDEF") = 3/6 = 0.5 ❌
+
+// Math.min() 奖励完整匹配
+lcsRatio("ABC", "ABCDEF") = 3/3 = 1.0 ✅
+
+// 但 LCS + Jaccard 组合权重过高 (0.8)
+// 导致错误答案分数接近正确答案 → DELTA_TOO_SMALL
+```
+
+**Linus 判断**:
+> "This is over-engineering. We added O(N*M) complexity for +7 Exact (56 vs 49), but lost -19 due to delta issues. The juice is not worth the squeeze. The real problem is normalization (punctuation) and data quality (DB inconsistency), not the similarity algorithm."
+
+**得到的教训**:
+1. ✅ **"Good taste" 原则**: 好算法应该消除特殊情况，而不是用复杂逻辑处理特殊情况
+2. ✅ **"Practical, not theoretical" 原则**: 理论上 LCS 容忍子串匹配，但实际数据中标点符号会打断匹配
+3. ❌ **违反 "Never break userspace" 原则**: Exact 下降 21% 等同于破坏用户体验
+
+#### 代码变更
+
+**文件**: `packages/ocr-match-core/src/match/similarity.ts`
+
+**变更**:
+```typescript
+// Line 75-100: 新增 lcsRatio() 函数（LCS Substring 算法）
+export function lcsRatio(s1: string, s2: string): number {
+  // O(N*M) 动态规划求最长公共子串
+  const minPossible = Math.min(len1, len2); // Math.max → Math.min 修复
+  return maxLen / minPossible;
+}
+
+// Line 140-160: 新增 projectFieldSimilarity() 函数
+export function projectFieldSimilarity(q: string, f: string): number {
+  return 0.2 * lev + 0.4 * jac + 0.4 * lcs; // 混合权重
+}
+
+// Line 199-209: singleFieldScore() 添加 isProjectField 参数
+```
+
+**集成位置**:
+- `rank.ts`: `calculateF2Score()` 调用 `projectFieldSimilarity()`
+- `strategies.ts`: `anchorMatch()` 使用 `singleFieldScore(q2, row.f2, true)`
+
+#### 下一步建议
+
+**推荐方案**: 回滚 + 数据驱动重新设计
+
+**Phase 1**: 立即回滚 LCS 算法，恢复 baseline (Lev 50% + Jac 50%)
+
+**Phase 2**: 标点符号修复（单独实验）
+- 更新 `normalize.user.json`: 添加单引号 `''`、括号 `()` 移除规则
+- 运行测试，评估收益（预期 +5-10 Exact）
+
+**Phase 3**: 案例研究（必做）
+- 读取 Top 10 失败案例的实际 OCR/DB 文本
+- 手工分析为什么匹配失败
+- 基于真实案例设计算法改进
+
+**Phase 4**: 重新评估 +28 Exact 目标可行性
+
+**文档**: 详见 [v0.2.0 Failure Analysis](./.spec-workflow/specs/v0.1.9-dynamic-threshold/v0.2.0_failure_analysis.md)
+
+---
+
 ### v0.1.8 - Supplier-Threshold Code Salvage (2025-11-18)
 
 **实施内容**:
