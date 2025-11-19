@@ -168,10 +168,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ### 实施方式
 
 **1. 如果有 Spec（来自阶段 0）**
-- 遵循 `.spec-workflow/WORKFLOW_GUIDE.md` 的 Task 三连流程
-- 每个 task 完成后立即：
+- 遵循 `.spec-workflow/WORKFLOW_GUIDE.md` (v2.1) 的工作流
+- 开发过程：
+  1. 正常 Git 习惯小步提交（试错、重构、bug fix）
+  2. 每个 commit message 包含 Task ID
+- Task 完成后：
   1. 更新 tasks.md 状态为 [x]
-  2. Git commit（代码 + tasks.md 一起）
+  2. Git commit tasks.md 更新（独立 commit 或 Phase 级别批量更新）
   3. TodoWrite 标记 completed
 - 运行测试验证（成功 → 下一个 task；失败 → 立即回滚）
 

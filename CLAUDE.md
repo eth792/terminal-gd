@@ -78,11 +78,11 @@ ls -lt runs/ | head -5         # 最新运行包
 
 **完整流程**：
 
-详见 `.spec-workflow/WORKFLOW_GUIDE.md` (v2.0)，核心要点：
+详见 `.spec-workflow/WORKFLOW_GUIDE.md` (v2.1)，核心要点：
 1. **Dashboard 自动启动** - AI 自动执行，你只需打开浏览器审批
 2. **R/D/T 一起提交** - 审批通过后原子化提交（避免部分文档丢失）
-3. **Task 三连流程** - 每个 task 完成后立即：更新 tasks.md + git commit + TodoWrite
-4. **状态永远同步** - 代码和 tasks.md 永不 out of sync
+3. **正常 Git 习惯** - 小步提交（试错、重构、bug fix），每个 commit 包含 Task ID
+4. **Implementation Log** - 反向记录 Task → Commits 映射关系
 
 **与版本发布的关系**：
 
