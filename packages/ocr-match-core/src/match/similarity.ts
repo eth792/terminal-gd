@@ -66,10 +66,10 @@ export function jaccardSimilarity(s1: string, s2: string, n = 2, normalizer?: No
  *
  * @param s1 - 字符串1
  * @param s2 - 字符串2
- * @returns LCS 长度 / max(len(s1), len(s2))
+ * @returns LCS 长度 / min(len(s1), len(s2))，奖励完整子串匹配
  *
  * @example
- * lcsRatio('新荣TOD项目', '新荣TOD项目一期') // ≥ 0.75
+ * lcsRatio('新荣TOD项目', '新荣TOD项目一期') // 1.0 (短串完全包含在长串中)
  * lcsRatio('ABC', 'ABC')                      // 1.0
  */
 export function lcsRatio(s1: string, s2: string): number {
@@ -94,9 +94,9 @@ export function lcsRatio(s1: string, s2: string): number {
     }
   }
 
-  // 归一化到 [0, 1]
-  const maxPossible = Math.max(len1, len2);
-  return maxPossible === 0 ? 1.0 : maxLen / maxPossible;
+  // 归一化到 [0, 1]（使用 min 避免长度差异惩罚）
+  const minPossible = Math.min(len1, len2);
+  return minPossible === 0 ? 1.0 : maxLen / minPossible;
 }
 
 /**
