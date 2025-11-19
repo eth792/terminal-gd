@@ -71,13 +71,18 @@ implementation_record.md 的版本条目由 `npm run update-docs` 自动生成�
 
 ## 版本历史
 
-### 📋 Workflow Automation v2.0 (2025-11-19)
+### 📋 Workflow Automation v2.1 (2025-11-19) - 重要修正
 
 **类型**: 文档流程优化（非代码版本）
 
-**优化内容**:
-- 明确 Git 提交策略（R/D/T 一起提交 + Task 按原子性独立提交）
-- 添加 Task 三连流程（更新 tasks.md + git commit + TodoWrite）
+**v2.1 修正内容** (基于用户反馈):
+- ✅ **修正过度理想化**：不再强制 Task ↔ Commit 1:1 映射
+- ✅ **保持 Git 最佳实践**：小步提交（试错、重构、bug fix 各一个 commit）
+- ✅ **Task ID 追溯**：每个 commit message 包含 Task ID，形成多对多映射
+- ✅ **Implementation Log**：反向记录 Task → Commits 完整关系
+
+**v2.0 优化内容**:
+- 明确 Git 提交策略（R/D/T 一起提交）
 - Dashboard 自动启动机制（AI 自动执行，用户零负担）
 - 整合 Spec Workflow 到版本发布流程
 
@@ -114,6 +119,9 @@ implementation_record.md 的版本条目由 `npm run update-docs` 自动生成�
 - `f1554a07` - docs(workflow): update WORKFLOW_GUIDE to v2.0 with automated flow
 - `e146b6e8` - docs(release): update RELEASE_WORKFLOW to v2.0 with Spec integration
 - `4f095032` - docs: simplify CLAUDE.md Spec Workflow section
+- `e12ccd98` - docs(record): add Workflow Automation v2.0 entry
+- `c07cbfca` - docs(workflow): correct Task workflow to v2.1 (important fix) ⬅️ 重要修正
+- `5701dea1` - docs: sync CLAUDE.md and RELEASE_WORKFLOW with v2.1 correction
 
 **下一步**:
 - 在实际 spec 实施中验证新流程的有效性
