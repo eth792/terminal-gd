@@ -71,6 +71,56 @@ implementation_record.md 的版本条目由 `npm run update-docs` 自动生成�
 
 ## 版本历史
 
+### 📋 Workflow Automation v2.0 (2025-11-19)
+
+**类型**: 文档流程优化（非代码版本）
+
+**优化内容**:
+- 明确 Git 提交策略（R/D/T 一起提交 + Task 按原子性独立提交）
+- 添加 Task 三连流程（更新 tasks.md + git commit + TodoWrite）
+- Dashboard 自动启动机制（AI 自动执行，用户零负担）
+- 整合 Spec Workflow 到版本发布流程
+
+**文档变更**:
+- `.spec-workflow/WORKFLOW_GUIDE.md` → v2.0
+  - 添加 "Git 提交策略" 章节（原子性 + 可追溯性）
+  - 添加 "Task 三连流程" 说明（强制执行）
+  - 添加 "Dashboard 自动启动" 说明
+  - 更新完整生命周期流程图
+- `analysis/docs-flow-automation/RELEASE_WORKFLOW.md` → v2.0
+  - 添加 "Stage 0: Spec 规划" 章节（可选）
+  - 更新 "Stage 1: 代码实施"（区分有 Spec/无 Spec）
+  - 更新 "Stage 4: Git 提交"（两种 commit message 模板）
+- `CLAUDE.md`
+  - 简化 Spec Workflow 章节（指向完整文档）
+  - 更新快速开始指南（体现自动化流程）
+
+**核心改进**:
+
+| 维度 | 改进前 | 改进后 |
+|------|--------|--------|
+| **Git 策略** | 不明确，容易遗漏文档 | R/D/T 一起提交（原子性），Task 独立提交 |
+| **Task 状态** | 经常遗忘更新 tasks.md | Task 三连流程强制同步（代码 + 状态） |
+| **Dashboard** | 用户手动启动 | AI 自动启动，用户零负担 |
+| **决策点** | 5 个手动决策点 | 2 个决策点（是否用 spec + 审批） |
+
+**价值**:
+- ✅ **减少人工干预**：5 个决策点 → 2 个
+- ✅ **消除同步问题**：代码和 tasks.md 永不 out of sync
+- ✅ **提高可追溯性**：Git history 成为精确的进度追踪器
+- ✅ **降低错误率**：自动化流程减少人为遗漏
+
+**Git Commits**:
+- `f1554a07` - docs(workflow): update WORKFLOW_GUIDE to v2.0 with automated flow
+- `e146b6e8` - docs(release): update RELEASE_WORKFLOW to v2.0 with Spec integration
+- `4f095032` - docs: simplify CLAUDE.md Spec Workflow section
+
+**下一步**:
+- 在实际 spec 实施中验证新流程的有效性
+- 根据使用反馈进一步优化自动化程度
+
+---
+
 ### v0.2.0 - Hybrid F2 Matching (FAILED) (2025-11-19)
 
 **实施内容**:
