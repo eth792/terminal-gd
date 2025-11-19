@@ -1,8 +1,13 @@
 # 版本发布工作流
 
-**版本**: v1.0
-**最后更新**: 2025-11-15
+**版本**: v2.0
+**最后更新**: 2025-11-19
 **适用项目**: terminal-gd (OCR Match Core)
+
+**v2.0 更新内容**:
+- ✅ 整合 Spec Workflow 到版本发布流程（Stage 0: Spec 规划）
+- ✅ 明确 Dashboard 自动启动机制
+- ✅ 更新 Stage 1 实施流程（遵循 Task 三连流程）
 
 ---
 
@@ -17,7 +22,57 @@
 
 ---
 
-## 阶段 0: 版本规划
+## 阶段 0: Spec 规划（可选，按判断标准）
+
+**目标**: 对于复杂变更，使用 Spec Workflow 进行结构化设计
+
+### 何时使用 Spec
+
+参考 `CLAUDE.md` 中的判断标准：
+- ✅ **多文件修改**（≥3 个文件）或架构变更
+- ✅ **新增 API endpoints/组件/核心函数**（需要详细设计）
+- ✅ **复杂实施**（需要分阶段审批和文档记录）
+- ❌ 简单 bug fix（单文件、单函数修改）
+
+### 必须完成
+
+**0.1 AI 判断是否需要 spec**
+- 根据判断标准自动评估
+- 如果需要，继续以下步骤
+
+**0.2 AI 自动启动 dashboard**
+```bash
+npx -y @pimzino/spec-workflow-mcp@latest --dashboard
+# 后台运行，AI 继续工作
+```
+
+**0.3 AI 完成 Requirements → Design → Tasks**
+- 调用 `mcp__spec-workflow__spec-workflow-guide`
+- 在 dashboard 中审批每个阶段
+- 详见 `.spec-workflow/WORKFLOW_GUIDE.md`
+
+**0.4 用户在 dashboard 审批**
+- 打开 `http://localhost:3000`
+- 审批 Requirements/Design/Tasks
+
+**0.5 AI 提交 R/D/T 文档（一起提交）**
+```bash
+git add .spec-workflow/specs/<spec-name>/requirements.md
+git add .spec-workflow/specs/<spec-name>/design.md
+git add .spec-workflow/specs/<spec-name>/tasks.md
+git commit -m "feat(spec/<spec-name>): add requirements, design, and tasks
+
+Complete R/D/T documentation for <spec-name> spec.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**0.6 进入阶段 0.5（版本规划）或 阶段 1（代码实施）**
+
+---
+
+## 阶段 0.5: 版本规划
 
 **目标**: 明确本次版本要做什么、预期效果如何
 
@@ -110,16 +165,33 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 **目标**: 完成代码变更和功能实现
 
+### 实施方式
+
+**1. 如果有 Spec（来自阶段 0）**
+- 遵循 `.spec-workflow/WORKFLOW_GUIDE.md` 的 Task 三连流程
+- 每个 task 完成后立即：
+  1. 更新 tasks.md 状态为 [x]
+  2. Git commit（代码 + tasks.md 一起）
+  3. TodoWrite 标记 completed
+- 运行测试验证（成功 → 下一个 task；失败 → 立即回滚）
+
+**2. 如果无 Spec（简单修改）**
+- 遵循 "Rule 1: 单次变更原则"
+- 小步提交，每个逻辑单元一个 commit
+- 及时测试验证
+
 ### 必须完成
 
 - [ ] 修改核心代码（`packages/ocr-match-core/src/`）
 - [ ] 构建项目（`pnpm -F ./packages/ocr-match-core build`）
 - [ ] 本地验证（单个样本快速测试）
+- [ ] 如有 Spec：所有 tasks.md 任务标记为 [x]
 
 ### 输出产物
 
 - 修改的 `.ts` 文件
 - 编译后的 `dist/` 文件
+- （如有 Spec）`.spec-workflow/specs/<spec-name>/tasks.md` 全部 [x]
 
 ### 📋 Spec Workflow 集成（可选）
 
@@ -288,6 +360,31 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ### Commit Message 模板
 
+**如果有 Spec 实施**：
+```
+feat(ocr-core): [简短描述] (vX.Y.Z)
+
+[详细说明本次优化内容]
+
+**Changes**:
+- [变更1]
+- [变更2]
+
+**Results** (222 samples):
+- Exact: X → Y (+Z, +W%)
+- [其他 KPI 变化]
+
+**Spec Implementation**:
+详细信息请查看：[<spec-name> Implementation Logs](./.spec-workflow/specs/<spec-name>/)
+
+Run ID: run_vX.Y.Z_fix_YYYYMMDD_HHMMSS
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**如果无 Spec（简单修改）**：
 ```
 feat(ocr-core): [简短描述] (vX.Y.Z)
 
@@ -308,7 +405,6 @@ feat(ocr-core): [简短描述] (vX.Y.Z)
 - [文档更新说明]
 
 Run ID: run_vX.Y.Z_fix_YYYYMMDD_HHMMSS
-Spec: spec-name (可选，如果本次版本有对应的 spec 实施)
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -441,6 +537,6 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
-**文档版本**: v1.0
-**最后更新**: 2025-11-15
+**文档版本**: v2.0
+**最后更新**: 2025-11-19
 **维护者**: Project Team
