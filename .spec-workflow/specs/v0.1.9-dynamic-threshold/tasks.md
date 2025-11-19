@@ -1,16 +1,19 @@
-# Tasks Document: v0.1.9 Dynamic Threshold Optimization
+# Tasks Document: v0.1.9 Dynamic Threshold Optimization (Scheme A)
 
 ## Overview
 
-**目标**: 实施动态阈值优化（32% → 35-37% 自动通过率）
+**实施方案**: Scheme A（保守优化，保留 Rule 5）
 
-**复杂度**: LOW（8 lines changed, 1 file modified, 0 new files）
+**目标**: 实施动态阈值优化（32% → 34-36% 自动通过率）
 
-**风险**: LOW（纯阈值逻辑，可立即回滚）
+**复杂度**: LOW（6 lines changed, 1 file modified, 0 new files）
 
-**⚠️ 关键教训**（来自上次 spec 失败）:
-- ❌ **不能偷懒**：每行代码都要深度思考
-- ❌ **不能随意**：必须分析性能影响
+**风险**: VERY LOW（保留 Rule 5 快速通道，只优化 Rule 3/4/7）
+
+**⚠️ 核心教训**（来自 v0.1.9 失败）:
+- ❌ **Rule 5 不是特殊情况**：它是双通道设计的快速通道，保护 88.7% 的 exact 案例
+- ❌ **不能删除 Rule 5**：删除后会导致 63/71 exact 降级为 review（灾难性回归）
+- ✅ **Scheme A 策略**：只优化 Rule 3/4/7，保留 Rule 5 不变
 - ✅ **必须验证**：先 sample test，再 full test
 
 ---
@@ -163,38 +166,37 @@ export function bucketize(
 
 ---
 
-#### Task 1.5: 删除 Rule 5（高置信度旁路）
+#### Task 1.5: ~~删除 Rule 5（高置信度旁路）~~ **[SKIPPED - Scheme A]**
 
 - **File**: `packages/ocr-match-core/src/bucket/bucketize.ts`
 - **Location**: 行 91-95
-- **Action**: 完全删除这 5 行代码
+- **Action**: **保留不变**（Scheme A 策略）
 
-**Before**:
+**Ultrathink 分析结论**:
+```
+Rule 5 保护了 63/71 (88.7%) 的 exact 案例
+- 这 63 个案例的平均分数: 0.940 (min=0.877, max=1.000)
+- 它们的 delta < 0.03 是因为 DB 中有多个相似项目（同一供应商、不同期数）
+- 删除 Rule 5 导致它们全部降级为 review（v0.1.9 失败的根本原因）
+```
+
+**Scheme A 策略**:
+- ✅ **保留 Rule 5 不变**：它是双通道设计的快速通道（绝对质量标准）
+- ✅ **只优化 Rule 3/4/7**：这些规则使用相对质量标准（delta check）
+- ✅ **未来优化**：Scheme C 会优化 Rule 5 本身（动态阈值 + Rule 5 条件联合优化）
+
+**代码保持不变**:
 ```typescript
   // 规则5: 高置信度旁路 - 极高分数直接通过，忽略 delta
   // 修复设计缺陷：避免高质量匹配被 delta 检查误判为 review
-  // v0.1.5: 降低阈值以救回边界案例（score 0.90→0.85, f2_score 0.80→0.75）
+  // v0.1.5: 降低阈值以救回边界案例（score 0.90→0.85, f2_score 0.80→0.75)
+  // v0.1.9: Scheme A 保留不变（保护 88.7% exact 案例）
   if (top1.score >= 0.85 && top1.f1_score >= 0.80 && top1.f2_score >= 0.75) {
     return { bucket: 'exact', reason: null };
   }
 ```
 
-**After**:
-```typescript
-  // (删除此段代码)
-```
-
-**性能分析**:
-- ✅ **性能提升**：减少一次 if 判断（虽然微不足道）
-
-**语义分析**:
-- ✅ **Good Taste**：消除特殊情况
-- ✅ **动态阈值自然处理**：当 f1=0.8, f2=0.75 时，动态阈值会自动降低
-
-**风险分析**:
-- ⚠️ **需要验证**：确保删除后，高置信度案例仍然通过 Rule 7
-
-**Requirements**: REQ-1（消除特殊情况）
+**Requirements**: REQ-2（向后兼容性），ultrathink_analysis.md Scheme A
 
 ---
 
@@ -461,34 +463,56 @@ export function bucketize(
 
 ## Notes
 
-### 为什么这次会成功？
+### 为什么 Scheme A 会成功？
 
-**1. 性能保证**:
+**1. 保留双通道设计**:
+- ✅ **Channel 1 (Rule 5)**: 高置信度快速通道，保护 63/71 (88.7%) exact 案例
+- ✅ **Channel 2 (Rule 6-7)**: 标准验证通道，处理剩余案例
+- ✅ **动态阈值只应用于 Channel 2**：Rule 3/4 是入口检查，Rule 7 是出口检查
+
+**2. 性能保证**:
 - ✅ 所有新增代码都是 **O(1)** 操作
 - ✅ 无循环、无递归、无外部调用
 - ✅ 只添加了一个纯函数和 3 次变量替换
 
-**2. 语义清晰**:
-- ✅ 动态阈值逻辑简单明了
-- ✅ 删除了特殊情况（Rule 5）
-- ✅ 向后兼容性完美
+**3. 预期收益来源**:
+- ✅ Rule 3/4 的动态阈值会让一些边界案例（f1/f2 稍低但 score 高）通过早期检查
+- ✅ Rule 7 的动态阈值会让更多高质量匹配通过最终验证
+- ✅ 预期新增 5-10 个 exact 案例（来自 FIELD_SIM_LOW_* 失败桶）
 
-**3. 验证充分**:
-- ✅ Sample test 快速检测（3min）
-- ✅ Full test 完整验证（5min）
-- ✅ 性能监控贯穿全程
+**4. 风险极低**:
+- ✅ Rule 5 保护层不变，63 个高置信度案例安全
+- ✅ 只影响不满足 Rule 5 条件的案例
+- ✅ 最坏情况：无收益，但绝不会回归
 
-### 与上次 spec 的区别
+### 与 v0.1.9 失败的区别
 
-**上次（recall-prefilter-optimization）失败原因**:
-- ❌ 可能引入了 O(N²) 复杂度
-- ❌ 实施过于随意
+**v0.1.9 失败原因**:
+- ❌ 删除了 Rule 5（误以为是"坏品味的特殊情况"）
+- ❌ 63/71 exact 案例失去保护，降级为 review
+- ❌ 灾难性回归：32% → 3.6% auto-pass
 
-**这次（dynamic-threshold）保证**:
-- ✅ 每行代码都有性能分析
-- ✅ 所有操作都是 O(1)
-- ✅ 极其谨慎的任务分解
+**Scheme A 修正**:
+- ✅ **保留 Rule 5**：理解它是双通道设计的关键
+- ✅ **只优化 Rule 3/4/7**：这些规则适合动态阈值
+- ✅ **数据驱动**：基于 ultrathink 分析的 63 案例深度研究
+
+### 后续优化路径
+
+**Scheme A（当前）**: 保守优化
+- 预期收益：+5-10 exact (+2-4pp)
+- 风险：Very Low
+
+**Scheme C（A 成功后）**: 双通道联合优化
+- 对 Rule 5 本身应用动态阈值
+- 预期收益：+10-20 exact (+4-8pp)
+- 风险：Medium
+
+**v0.2.0（未来）**: substring 加权重算
+- 核心算法升级
+- 预期收益：+30-50 exact (+15-25pp)
+- 风险：High
 
 ---
 
-**任务文档完成，等待审批。**
+**任务文档更新完成（Scheme A），等待实施。**

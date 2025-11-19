@@ -53,6 +53,18 @@ export function bucketize(
   candidates: ScoredCandidate[],
   config: BucketConfig
 ): BucketResult {
+  // v0.1.9 Scheme A: 动态阈值计算（内联函数）
+  // 当 max(f1, f2) > 0.8 时，降低阈值门槛，允许更多高置信度案例通过
+  function getDynamicThreshold(f1: number, f2: number, baseThreshold: number): number {
+    const maxScore = Math.max(f1, f2);
+    if (maxScore <= 0.8) {
+      return baseThreshold;  // 低置信度场景，保持严格
+    }
+    // 高置信度补偿：最多放宽 0.1（0.6 → 0.5）
+    const compensation = (maxScore - 0.8) * 0.5;
+    return Math.max(0.5, baseThreshold - compensation);  // 下限 0.5
+  }
+
   // 规则1: 提取失败 → fail
   if (!q1 && !q2) {
     return { bucket: 'fail', reason: FailReason.EXTRACT_BOTH_EMPTY };
@@ -70,8 +82,16 @@ export function bucketize(
     return { bucket: 'fail', reason: FailReason.NO_CANDIDATES };
   }
 
-  // 规则3: 单字段相似度过低 → fail (优先检查project)
-  if (top1.f2_score < config.minFieldSim) {
+  // v0.1.9 Scheme A: 计算动态阈值
+  // 基于 top1 的分数动态调整阈值，应用于 Rule 3/4/7
+  const dynamicThreshold = getDynamicThreshold(
+    top1.f1_score,
+    top1.f2_score,
+    config.minFieldSim
+  );
+
+  // 规则3: 单字段相似度过低 → fail (使用动态阈值)
+  if (top1.f2_score < dynamicThreshold) {
     return { bucket: 'fail', reason: FailReason.FIELD_SIM_LOW_PROJECT };
   }
 
@@ -82,8 +102,8 @@ export function bucketize(
     return { bucket: 'fail', reason: FailReason.SUPPLIER_HARD_REJECT };
   }
 
-  // 规则4: 供应商相似度过低（软阈值） → fail
-  if (top1.f1_score < config.minFieldSim) {
+  // 规则4: 供应商相似度过低 → fail (使用动态阈值)
+  if (top1.f1_score < dynamicThreshold) {
     return { bucket: 'fail', reason: FailReason.FIELD_SIM_LOW_SUPPLIER };
   }
 
@@ -106,11 +126,11 @@ export function bucketize(
   const weightedScore = calculateWeightedScore(top1.f1_score, top1.f2_score, weights);
   const minReview = config.minReview ?? 0.65;
 
-  // 自动通过检查（使用加权分数）
+  // 自动通过检查（使用加权分数和动态阈值）
   if (
     weightedScore >= config.autoPass &&
-    top1.f1_score >= config.minFieldSim &&
-    top1.f2_score >= config.minFieldSim &&
+    top1.f1_score >= dynamicThreshold &&
+    top1.f2_score >= dynamicThreshold &&
     delta >= config.minDeltaTop
   ) {
     return { bucket: 'exact', reason: null };
