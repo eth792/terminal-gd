@@ -28,8 +28,12 @@ export function scoreCandidates(
   normalizer?: Normalizer
 ): ScoredCandidate[] {
   return candidates.map(row => {
-    const f1_score = singleFieldScore(q1, row.f1, normalizer);
-    const f2_score = singleFieldScore(q2, row.f2, normalizer);
+    // F1 使用旧算法（供应商匹配）
+    const f1_score = singleFieldScore(q1, row.f1, false, normalizer);
+
+    // F2 使用新算法（项目名称匹配）
+    const f2_score = singleFieldScore(q2, row.f2, true, normalizer);
+
     const score = hybridScore(q1, q2, row.f1, row.f2, 0.5, normalizer);
 
     return {

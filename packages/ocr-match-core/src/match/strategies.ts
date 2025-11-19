@@ -65,7 +65,7 @@ export function anchorMatch(
     // 情况1: f1 完全匹配，f2 相似度 >= threshold
     if (row.f1 === q1) {
       f1_score = 1.0;
-      f2_score = singleFieldScore(q2, row.f2, normalizer);
+      f2_score = singleFieldScore(q2, row.f2, true, normalizer); // F2 使用项目算法
       if (f2_score >= threshold) {
         matched = true;
       }
@@ -73,7 +73,7 @@ export function anchorMatch(
     // 情况2: f2 完全匹配，f1 相似度 >= threshold
     else if (row.f2 === q2) {
       f2_score = 1.0;
-      f1_score = singleFieldScore(q1, row.f1, normalizer);
+      f1_score = singleFieldScore(q1, row.f1, false, normalizer); // F1 使用供应商算法
       if (f1_score >= threshold) {
         matched = true;
       }
