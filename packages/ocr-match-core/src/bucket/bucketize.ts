@@ -114,6 +114,14 @@ export function bucketize(
     return { bucket: 'exact', reason: null };
   }
 
+  // 规则5.5: 供应商完全匹配旁路 - F1 完美匹配时，忽略 delta
+  // v0.1.9a: 解决 DELTA_TOO_SMALL 高分案例被误判问题
+  // 当供应商完全匹配（F1 >= 0.95）且总分 >= 0.82 时，直接通过
+  // 根据案例分析：F1 完美匹配 + score >= 0.82 的案例 88% 应该是 exact
+  if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
+    return { bucket: 'exact', reason: null };
+  }
+
   // 规则6: Top1-Top2 差值过小 → review
   const top2 = candidates[1];
   const delta = top2 ? top1.score - top2.score : 1.0; // 只有1个候选时，delta=1.0
