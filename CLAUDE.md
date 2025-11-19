@@ -76,59 +76,33 @@ ls -lt runs/ | head -5         # 最新运行包
 - ❌ 纯配置调整（label_alias.json、noise_words.json）
 - ❌ 文档更新（除非涉及架构级文档重构）
 
-**基本流程**：
+**完整流程**：
 
-1. 调用 `mcp__spec-workflow__spec-workflow-guide` 查看完整指南
-2. Requirements → Design → Tasks → Implementation
-3. 每个阶段需要 dashboard 审批
-4. 实施完成后使用 `mcp__spec-workflow__log-implementation` 记录
-5. 详细工作流见 `.spec-workflow/WORKFLOW_GUIDE.md`
+详见 `.spec-workflow/WORKFLOW_GUIDE.md` (v2.0)，核心要点：
+1. **Dashboard 自动启动** - AI 自动执行，你只需打开浏览器审批
+2. **R/D/T 一起提交** - 审批通过后原子化提交（避免部分文档丢失）
+3. **Task 三连流程** - 每个 task 完成后立即：更新 tasks.md + git commit + TodoWrite
+4. **状态永远同步** - 代码和 tasks.md 永不 out of sync
 
 **与版本发布的关系**：
 
-Spec 可以独立存在（纯重构/文档优化，不发版），也可以关联版本发布：
+Spec 可以独立存在（纯重构/文档优化，不发版），也可以关联版本发布。
 
-**Spec-based 版本发布流程**：
-1. 先走 spec-workflow（Requirements → Design → Tasks → Implementation）
-2. 实施代码时遵循 `.spec-workflow/WORKFLOW_GUIDE.md`（更新 tasks.md）
-3. 实施完成后，走 `RELEASE_WORKFLOW.md` Stage 2-5（测试 → 文档 → Git）
-4. 运行 `npm run update-docs` 时带 `specName` 参数（第 5 个参数，kebab-case）
-5. Git commit 包含 spec 实施日志（自动引用链接）
+详见 `analysis/docs-flow-automation/RELEASE_WORKFLOW.md` (v2.0) Stage 0-1。
 
-**Implementation Logs 使用时机**：
-
-- **必须使用**：新增 API endpoints、组件、核心函数时
-- **可选使用**：简单重构、文档优化时
-- **记录内容**：`apiEndpoints`, `components`, `functions`, `classes`, `integrations`
-- **工具**：`mcp__spec-workflow__log-implementation`
-
-**完整示例（spec-based 版本发布）**：
+**快速开始**：
 
 ```bash
-# 1. 创建 spec（假设：v0.1.8 提取逻辑修复）
-mcp__spec-workflow__spec-workflow-guide
-# Requirements → Design → Tasks（在 dashboard 审批）
+# AI 会自动判断是否需要 spec
+# 如果需要，AI 会自动：
+# 1. 启动 dashboard（npx -y @pimzino/spec-workflow-mcp@latest --dashboard）
+# 2. 完成 R/D/T 文档（你在 dashboard 审批）
+# 3. 提交 R/D/T 文档（一起提交）
+# 4. 实施 tasks（遵循 Task 三连流程）
 
-# 2. 实施代码（遵循 WORKFLOW_GUIDE.md）
-# - 开发时使用 TodoWrite 追踪进度
-# - 完成 task 后立即更新 tasks.md 状态为 [x]
-# - 提交代码时 commit message 包含 task ID
-
-# 3. 完整测试
-pnpm -F ./packages/ocr-match-core build
-# 运行完整测试 → 生成 run_v0.1.8_fix_20251117_123456
-
-# 4. 更新文档（带 specName）
-npm run update-docs -- v0.1.8 "提取逻辑修复" run_v0.1.8_fix_20251117_123456 v0.1.9 extraction-logic-fix
-
-# 5. Git commit
-git add .
-git commit -m "feat(ocr-core): 提取逻辑修复 (v0.1.8)
-
-详细信息请查看：[extraction-logic-fix Implementation Logs](./.spec-workflow/specs/extraction-logic-fix/)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>"
+# 你只需要：
+# - 打开 http://localhost:3000 审批
+# - 验证实施效果
 ```
 
 **已完成的 Spec 示例**：
@@ -136,6 +110,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - `spec-docs-integration` - Spec workflow 与 docs-flow 集成
 - `docs-flow-automation` - 版本发布自动化脚本
 - `docs-structure-cleanup` - 文档结构重组
+- `workflow-automation-v2` - 工作流自动化 v2.0（本次改造）
 
 ### Docs Flow Automation（文档自动化）
 
@@ -284,4 +259,4 @@ git log --oneline -3                            # 查看历史
 <!-- "关键技术决策记录" → docs/TECHNICAL_DECISIONS.md -->
 <!-- "核心架构理念"（详细版）→ docs/TECHNICAL_DECISIONS.md -->
 
-**最后更新**: 2025-11-15 | **文档简化**: CLAUDE.md 现只包含 AI meta-instructions，项目数据已迁移至 docs/
+**最后更新**: 2025-11-19 | **文档简化**: CLAUDE.md 现只包含 AI meta-instructions，项目数据已迁移至 docs/
