@@ -1,8 +1,13 @@
 # Spec-Workflow 工作流指南
 
-**版本**: v1.0
-**最后更新**: 2025-11-16
+**版本**: v2.0
+**最后更新**: 2025-11-19
 **适用范围**: 所有使用 spec-workflow 的功能开发和重构
+
+**v2.0 更新内容**:
+- ✅ 明确 Git 提交策略（R/D/T 一起提交 + Task 按原子性独立提交）
+- ✅ 添加 Task 三连流程（更新 tasks.md + git commit + TodoWrite）
+- ✅ Dashboard 自动启动说明
 
 ---
 
@@ -31,22 +36,39 @@ Spec-workflow 是一个结构化的功能开发流程，确保：
 
 ## 基本流程
 
+### Dashboard 自动启动
+
+**AI 在开始 spec 时会自动启动 dashboard**：
+
+```bash
+# AI 在调用 spec-workflow-guide 前自动执行
+npx -y @pimzino/spec-workflow-mcp@latest --dashboard
+# 后台运行，不阻塞 AI 工作流
+```
+
+**你只需要**：
+- 打开浏览器访问 `http://localhost:3000`
+- 在 dashboard 中审批 Requirements/Design/Tasks
+- 无需记住启动命令
+
 ### 完整生命周期
 
 ```mermaid
 graph TD
-    A[1️⃣ Requirements] -->|Dashboard 审批| B[2️⃣ Design]
-    B -->|Dashboard 审批| C[3️⃣ Tasks]
-    C -->|开始实施| D[4️⃣ Implementation]
-    D -->|完成| E[5️⃣ Validation]
-    E -->|通过| F[✅ Spec Complete]
+    A[0️⃣ Dashboard 启动] -->|AI 自动| B[1️⃣ Requirements]
+    B -->|Dashboard 审批| C[2️⃣ Design]
+    C -->|Dashboard 审批| D[3️⃣ Tasks]
+    D -->|R/D/T 一起提交| E[4️⃣ Implementation]
+    E -->|Task 三连流程| F[5️⃣ Validation]
+    F -->|通过| G[✅ Spec Complete]
 
-    style A fill:#e3f2fd
+    style A fill:#fff9c4
     style B fill:#e3f2fd
-    style C fill:#fff4e6
-    style D fill:#e8f5e9
-    style E fill:#f3e5f5
-    style F fill:#c8e6c9
+    style C fill:#e3f2fd
+    style D fill:#fff4e6
+    style E fill:#e8f5e9
+    style F fill:#f3e5f5
+    style G fill:#c8e6c9
 ```
 
 ### 各阶段职责
@@ -58,6 +80,45 @@ graph TD
 | **Tasks** | `tasks.md` | 自动生成 | 同上 |
 | **Implementation** | Code + Commits | Git commits | 见 Commit 规范 |
 | **Validation** | 测试结果 | 自行验证 | 见 Phase 检查点 |
+
+---
+
+## Git 提交策略
+
+### 核心原则：原子性 + 可追溯性
+
+**规则**：
+- **R/D/T 文档**：审批通过后**一起提交**（原子性）
+- **Task 代码**：按**功能原子性**独立提交（每个 task 一个 commit）
+- **tasks.md 状态**：与代码**同步提交**（never out of sync）
+
+### 标准提交序列
+
+```bash
+# Step 1: R/D/T 文档审批通过后一起提交
+git add .spec-workflow/specs/<spec-name>/requirements.md
+git add .spec-workflow/specs/<spec-name>/design.md
+git add .spec-workflow/specs/<spec-name>/tasks.md
+git commit -m "feat(spec/<spec-name>): add requirements, design, and tasks
+
+Complete R/D/T documentation for <spec-name> spec.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# Step 2: 每个 task 完成后立即提交（代码 + tasks.md 状态更新）
+# 使用"Task 三连流程"（见下文）
+
+# Step 3: 所有 task 完成后记录 implementation logs
+git commit -m "docs(spec/<spec-name>): add implementation logs"
+```
+
+### 理由
+
+- ✅ **R/D/T 原子性**：计划要么都有要么都没有（避免部分文档丢失）
+- ✅ **Task 可追溯**：每个 commit 对应一个逻辑单元（history 清晰）
+- ✅ **状态同步**：tasks.md 永远与代码一致（dashboard 准确）
+- ✅ **遵循 Rule 1**：单次变更原则（每个 commit 只做一件事）
 
 ---
 
@@ -111,12 +172,36 @@ Spec-workflow 使用 **两个独立的任务追踪系统**，各有不同职责�
 ❌ **错误行为**：任务完成后只标记 TodoWrite，不更新 tasks.md
 ✅ **正确行为**：任务完成后**必须**更新 tasks.md 状态为 `[x]`
 
+### 🔄 Task 三连流程（强制执行）
+
+**每个 task 完成后必须立即执行以下三步**：
+
+```markdown
+1️⃣ 更新 tasks.md 状态为 [x]
+   - 使用 Edit 工具修改 .spec-workflow/specs/<spec-name>/tasks.md
+   - 将对应 task 的 [ ] 改为 [x]
+
+2️⃣ Git commit（代码 + tasks.md 一起提交）
+   - git add <modified-files>
+   - git add .spec-workflow/specs/<spec-name>/tasks.md
+   - git commit -m "type(scope): description (Task X.Y)"
+
+3️⃣ TodoWrite 标记 completed
+   - 更新 TodoWrite 状态（AI 内部追踪）
+   - 确保两层系统同步
+```
+
+**关键保证**：
+- ✅ 代码和状态**原子化提交**（never out of sync）
+- ✅ 遵循 "Rule 2: 失败立即停止"（测试失败可精确回滚）
+- ✅ Git history 成为精确的进度追踪器
+
 ### 📖 典型工作流示例
 
 ```markdown
 ## 场景：实施 Task 1.1 - 创建 TECHNICAL_DECISIONS.md
 
-### Step 1: 开始任务（使用 TodoWrite）
+### Step 1: 开始任务（TodoWrite 标记 in_progress）
 AI 使用 TodoWrite 创建临时任务清单：
 - [ ] 读取 CLAUDE.md lines 595-641
 - [ ] 提取技术决策内容
@@ -128,11 +213,19 @@ AI 使用 TodoWrite 创建临时任务清单：
 AI 边开发边更新：
 - [x] 读取 CLAUDE.md lines 595-641
 - [x] 提取技术决策内容
-- [in_progress] 按 decision record 模板组织
-- [ ] 创建 docs/TECHNICAL_DECISIONS.md
-- [ ] 验证所有决策已记录
+- [x] 按 decision record 模板组织
+- [x] 创建 docs/TECHNICAL_DECISIONS.md
+- [x] 验证所有决策已记录
 
-### Step 3: 完成任务（Git commit）
+### Step 3: Task 三连流程（关键！）
+
+**3.1 更新 tasks.md 状态**
+📝 Edit .spec-workflow/specs/<spec-name>/tasks.md:
+- [ ] 1.1 Create TECHNICAL_DECISIONS.md  → - [x] 1.1 Create TECHNICAL_DECISIONS.md
+
+**3.2 Git commit（代码 + tasks.md 一起）**
+git add docs/TECHNICAL_DECISIONS.md
+git add .spec-workflow/specs/<spec-name>/tasks.md
 git commit -m "docs(tech-decisions): create TECHNICAL_DECISIONS.md (Task 1.1)
 
 Created comprehensive technical decisions log with 4 key decisions:
@@ -143,15 +236,18 @@ Created comprehensive technical decisions log with 4 key decisions:
 
 Extracted from CLAUDE.md lines 595-641 following design.md template.
 
+Updated tasks.md status: Task 1.1 [x] completed.
+
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-### Step 4: 更新 tasks.md（关键！）
-📝 Edit .spec-workflow/specs/*/tasks.md:
-- [ ] 1.1 Create TECHNICAL_DECISIONS.md  → - [x] 1.1 Create TECHNICAL_DECISIONS.md
+**3.3 TodoWrite 标记 completed**
+（AI 内部更新，确保两层系统同步）
 
-### Step 5: 提交 tasks.md 更新
-git commit -m "chore(spec): update Task 1.1 status to completed"
+### Step 4: 运行测试验证（如适用）
+- 如果有测试，立即运行
+- 成功 → 进入下一个 task
+- 失败 → 立即回滚此 commit，分析原因
 ```
 
 ---
@@ -526,6 +622,6 @@ git config --global commit.template ~/.gitmessage
 
 ---
 
-**最后更新**: 2025-11-16
+**最后更新**: 2025-11-19
 **维护者**: Project Team
 **反馈**: 如发现流程问题或有改进建议，请在项目 issue 中讨论
