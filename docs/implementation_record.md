@@ -7,9 +7,10 @@
 ## 🔗 快速导航
 
 ### 最新版本
-- **v0.1.9b** (2025-11-20) - Two-Column Layout Fix，59.0% 自动通过率 (+3.6%)
+- **v0.1.9c** (2025-11-20) - Chinese-Friendly Report Format，新增 results_cn.csv
 
 ### 重要版本
+- **v0.1.9c** (2025-11-20) - 报告格式优化，中文友好版 CSV
 - **v0.1.9b** (2025-11-20) - 59.0% 自动通过率，两列布局提取修复 (+3.6%)
 - **v0.1.9a** (2025-11-20) - 55.4% 自动通过率，DELTA_TOO_SMALL 优化 (+13.1%)
 - **v0.1.9** (2025-11-20) - 42.3% 自动通过率，Multi-Excel Support (+10.3%)
@@ -278,6 +279,29 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 - **位置**: 在 Rule 5（高置信度旁路）之后，Rule 6（delta 检查）之前
 
 **Git Commit**: `待提交` - feat(bucketize): add supplier perfect match bypass rule
+
+---
+
+### v0.1.9c - Chinese-Friendly Report Format (2025-11-20)
+
+**实施内容**:
+- 新增 `results_cn.csv` 中文友好版报告（自动与 `results.csv` 一起生成）
+- 设计原则：数据与显示分离（`CN_HEADERS` + `CN_COLUMNS` 配置）
+- 改进点：
+  1. 列名中文化（保留英文字段名作为后缀，如 `供应商(q_supplier)`）
+  2. 去掉冗余列：`source_txt`, `source_image`（`file_name` 足够溯源）
+  3. `file_name` 去掉扩展名后缀
+  4. `source_file` 去掉路径前缀
+  5. 相似度精度调整为 4 位小数
+
+**版本定位**: 报告格式优化 - 提升人类可读性
+
+**代码变更**:
+- `packages/ocr-match-core/src/report/schema.ts` - 新增 `CN_HEADERS`, `CN_COLUMNS`
+- `packages/ocr-match-core/src/report/writer.ts` - 新增 `writeResultsCnCsv()`, `transformRowForCN()`
+- `docs/TECHNICAL_DECISIONS.md` - 更新运行包结构说明
+
+**Git Commit**: `0130e4da` - feat(report): add results_cn.csv with Chinese-friendly columns (v0.1.9c)
 
 ---
 
