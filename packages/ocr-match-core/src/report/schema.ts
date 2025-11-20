@@ -222,3 +222,68 @@ export function formatDuration(ms: number): string {
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 60000).toFixed(1)}min`;
 }
+
+/**
+ * results_cn.csv 中文友好版配置
+ *
+ * 设计原则：数据与显示分离
+ * - 数据结构保持纯净（复用 ResultRow）
+ * - 显示逻辑独立配置（CN_HEADERS + CN_COLUMNS）
+ *
+ * 改进点：
+ * 1. 列名中文化（保留英文字段名作为后缀）
+ * 2. 去掉冗余列：source_txt, source_image（file_name 足够溯源）
+ * 3. file_name 去掉扩展名后缀（仅保留文件名）
+ * 4. source_file 去掉路径前缀（仅保留文件名）
+ * 5. 相似度精度调整为 4 位小数
+ */
+
+/**
+ * 中文列名映射（显示层配置）
+ */
+export const CN_HEADERS: Record<string, string> = {
+  file_name: '文件名(file_name)',
+  q_supplier: '供应商(q_supplier)',
+  q_project: '工程(q_project)',
+  cand_f1: '候选供应商(cand_f1)',
+  cand_f2: '候选工程(cand_f2)',
+  source_file: 'DB来源(source_file)',
+  row_index: '行号(row_index)',
+  s_field1: '供应商相似度(s_field1)',
+  s_field2: '工程相似度(s_field2)',
+  score: '综合得分(score)',
+  bucket: '结果(bucket)',
+  reason: '原因(reason)',
+  mode: '匹配模式(mode)',
+  viewer_link: '审阅链接(viewer_link)',
+  run_id: '运行ID(run_id)',
+  config_version: '配置版本(config_version)',
+  config_sha: '配置SHA(config_sha)',
+  db_digest: 'DB指纹(db_digest)',
+  was_cleaned: '已清洗(was_cleaned)',
+};
+
+/**
+ * 中文版要输出的列（去掉冗余列 source_txt, source_image）
+ */
+export const CN_COLUMNS: string[] = [
+  'file_name',
+  'q_supplier',
+  'q_project',
+  'cand_f1',
+  'cand_f2',
+  'source_file',
+  'row_index',
+  's_field1',
+  's_field2',
+  'score',
+  'bucket',
+  'reason',
+  'mode',
+  'viewer_link',
+  'run_id',
+  'config_version',
+  'config_sha',
+  'db_digest',
+  'was_cleaned',
+];

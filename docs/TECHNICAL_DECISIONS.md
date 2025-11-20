@@ -118,6 +118,7 @@ runs/
     ├── manifest.json                # 元数据：输入参数/统计/版本/fingerprints
     ├── summary.md                   # 人类可读的执行总结
     ├── results.csv                  # ✨ 单一数据源真理（Top1 + scores + bucket + reason）
+    ├── results_cn.csv               # 中文友好版（列名中文化，去除冗余列）
     ├── results_top3.csv             # 可选：Top 3 候选
     ├── review.html                  # 可选：单页审查器（左侧表格 + 右侧图像/文本）
     └── log.jsonl                    # 结构化日志
@@ -129,8 +130,25 @@ file_name, q_supplier, q_project,
 cand_f1, cand_f2, source_file, row_index,
 s_field1, s_field2, score, bucket, reason, mode,
 source_txt, source_image, viewer_link,
-run_id, config_version, config_sha, db_digest
+run_id, config_version, config_sha, db_digest, was_cleaned
 ```
+
+**results_cn.csv 的列契约**（中文友好版，v0.1.9 新增）:
+```
+文件名(file_name), 供应商(q_supplier), 工程(q_project),
+候选供应商(cand_f1), 候选工程(cand_f2), DB来源(source_file), 行号(row_index),
+供应商相似度(s_field1), 工程相似度(s_field2), 综合得分(score),
+结果(bucket), 原因(reason), 匹配模式(mode),
+审阅链接(viewer_link),
+运行ID(run_id), 配置版本(config_version), 配置SHA(config_sha),
+DB指纹(db_digest), 已清洗(was_cleaned)
+```
+
+**改进点**（results_cn.csv）:
+1. 列名中文化（保留英文字段名作为后缀方便映射）
+2. 去掉冗余列：`source_txt`, `source_image`（`file_name` 足够溯源）
+3. `file_name` 去掉扩展名后缀（仅保留文件名）
+4. `source_file` 去掉路径前缀（仅保留文件名）
 
 **Consequences**:
 - ✅ **优点**:

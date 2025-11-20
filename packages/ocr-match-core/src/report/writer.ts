@@ -13,7 +13,7 @@ import type {
   Summary,
   CSV_COLUMNS,
 } from './schema.js';
-import { formatPercent, formatDuration } from './schema.js';
+import { formatPercent, formatDuration, CN_HEADERS, CN_COLUMNS } from './schema.js';
 import { logger } from '../util/log.js';
 
 /**
@@ -84,6 +84,55 @@ function matchResultToRow(
 }
 
 /**
+ * 辅助函数：去掉文件名的扩展名
+ */
+function removeExtension(fileName: string): string {
+  const lastDot = fileName.lastIndexOf('.');
+  return lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+}
+
+/**
+ * 辅助函数：去掉路径前缀，只保留文件名
+ */
+function getBaseName(filePath: string): string {
+  return path.basename(filePath);
+}
+
+/**
+ * 辅助函数：将数字精度调整为 4 位小数
+ */
+function toFixed4(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
+/**
+ * 转换 ResultRow 为中文友好版（处理值转换）
+ */
+function transformRowForCN(row: ResultRow): Record<string, unknown> {
+  return {
+    file_name: removeExtension(row.file_name),
+    q_supplier: row.q_supplier,
+    q_project: row.q_project,
+    cand_f1: row.cand_f1,
+    cand_f2: row.cand_f2,
+    source_file: getBaseName(row.source_file),
+    row_index: row.row_index,
+    s_field1: toFixed4(row.s_field1),
+    s_field2: toFixed4(row.s_field2),
+    score: toFixed4(row.score),
+    bucket: row.bucket,
+    reason: row.reason,
+    mode: row.mode,
+    viewer_link: row.viewer_link,
+    run_id: row.run_id,
+    config_version: row.config_version,
+    config_sha: row.config_sha,
+    db_digest: row.db_digest,
+    was_cleaned: row.was_cleaned,
+  };
+}
+
+/**
  * 写入 results.csv（Top1 结果）
  */
 export async function writeResultsCsv(
@@ -123,6 +172,42 @@ export async function writeResultsCsv(
   await fs.writeFile(csvPath, csvContent, 'utf-8');
 
   logger.info('report.csv', `Wrote results.csv with ${rows.length} rows to ${csvPath}`);
+}
+
+/**
+ * 写入 results_cn.csv（中文友好版）
+ *
+ * 设计原则：数据与显示分离
+ * - 复用 ResultRow 数据结构
+ * - 使用 CN_HEADERS 映射中文列名
+ * - 使用 CN_COLUMNS 定义输出列（去掉冗余列）
+ *
+ * 改进点：
+ * 1. 列名中文化（保留英文字段名作为后缀）
+ * 2. 去掉冗余列：source_txt, source_image
+ * 3. file_name 去掉扩展名后缀
+ * 4. source_file 去掉路径前缀
+ * 5. 相似度精度调整为 4 位小数
+ */
+export async function writeResultsCnCsv(
+  results: MatchOcrResult[],
+  bundleConfig: RunBundleConfig
+): Promise<void> {
+  const rows: ResultRow[] = results.map(r => matchResultToRow(r, 0, bundleConfig));
+  const cnRows = rows.map(transformRowForCN);
+
+  const csvContent = stringify(cnRows, {
+    header: true,
+    columns: CN_COLUMNS.map(col => ({
+      key: col,
+      header: CN_HEADERS[col],
+    })),
+  });
+
+  const csvPath = path.join(bundleConfig.out_dir, 'results_cn.csv');
+  await fs.writeFile(csvPath, csvContent, 'utf-8');
+
+  logger.info('report.csv', `Wrote results_cn.csv with ${cnRows.length} rows to ${csvPath}`);
 }
 
 /**
@@ -382,8 +467,11 @@ export async function writeRunBundle(
 
   logger.info('report.bundle', `Creating run bundle at ${bundleConfig.out_dir}`);
 
-  // 写入 results.csv
+  // 写入 results.csv（原始版本，保持向后兼容）
   await writeResultsCsv(results, bundleConfig);
+
+  // 写入 results_cn.csv（中文友好版）
+  await writeResultsCnCsv(results, bundleConfig);
 
   // 写入 results_top3.csv（可选）
   if (options.includeTop3) {
