@@ -1197,4 +1197,72 @@ const adminPrefixes = [
 
 ---
 
-**最后更新**: 2025-11-13 10:15
+### v0.1.9c - Phase 1.1 + 1.2: Upward Lookup Boundary Fix (2025-11-20)
+
+**实施内容**:
+
+**Phase 1.1 (Lines 119-157)**: 修复 upward lookup 标签判断 scope 问题
+- 移动 `currentFieldLabels` 和 `otherFieldLabels` 定义到函数前部
+- 使用 `currentFieldLabels` 替代 `labels` 判断当前字段标签
+- 使用 `otherFieldLabels` 替代 `labels` 判断其他字段标签
+- 修复 Line 134 的 scope 问题，确保跳过逻辑使用正确的标签集合
+
+**Phase 1.2 (Lines 97-104)**: Two-column layout 增加垃圾过滤
+- 增加 `hasValidEntity` 检查：`/公司|有限|集团|工程|项目|线路|站|小区|改造/`
+- 增加 `isLikelyGarbage` 检查：长度 < 10 且不包含 "公司|有限|集团"
+- 防止 two-column layout 提取无效 OCR 识别内容（如 "社代宝工理"）
+
+**版本定位**: 提取逻辑优化 - 修复多行项目名称提取截断问题
+
+**目标案例**: `baoshengkejichuangxingufenyouxiangongsi4100912930.txt`
+- OCR Line 5-6: "武汉联榕房地产开发有限公司"新建" + "居住项目（中石化徐家棚地块）"新"
+- 当前提取: "居住项目" (截断)
+- 期望提取: 包含完整开发商和项目信息
+
+#### 测试结果对比
+
+| 版本 | Exact | Review | Fail | FIELD_SIM_LOW_PROJECT | EXTRACT_EMPTY_PROJECT |
+|------|-------|--------|------|----------------------|----------------------|
+| **v0.1.9b (baseline)** | 131 (59.0%) | 17 (7.7%) | 74 (33.3%) | 16 | 11 |
+| **Phase 1.1** | 138 (62.2%) | 17 (7.7%) | 67 (30.2%) | 19 (+3) | 11 |
+| **Phase 1.2** | 138 (62.2%) | 18 (8.1%) | 66 (29.7%) | 18 (-1) | 11 |
+
+**关键发现**:
+
+1. **Phase 1.1 结果分析**:
+   - ✅ Exact 从 131 → 138 (+7, +5.3%)
+   - ❌ FIELD_SIM_LOW_PROJECT 从 16 → 19 (+3)
+   - ❌ 目标案例仍提取 "居住项目"，未修复
+   - 运行 ID: `run_20251120_18_19__c358299a_v0.1.9`
+
+2. **Phase 1.2 结果分析**:
+   - ✅ Review 从 17 → 18 (+1)：有 1 个案例从 fail 升级为 review
+   - ✅ FIELD_SIM_LOW_PROJECT 从 19 → 18 (-1)：防止垃圾提取生效
+   - ❌ 目标案例仍提取 "居住项目"，未修复
+   - 运行 ID: `run_20251120_18_29__c358299a_v0.1.9`
+
+3. **失败根因分析**:
+   - Phase 1.1 修复了标签判断逻辑，但 upward lookup 只拼接一行
+   - Phase 1.2 阻止了垃圾提取，但没有解决多行拼接问题
+   - 真正问题：Two-column layout 需要支持向上查找多行内容
+
+**技术洞察**:
+
+1. **标签行 vs 内容行误判**:
+   - Line 6 "居住项目（中石化徐家棚地块）"新" 被误判为标签行
+   - 原因: `"居住项目".includes("项目")` → TRUE
+   - 解决方案: 检查标签后是否有实际内容（方案 D）
+
+2. **Two-column layout 局限性**:
+   - 当前只检查下一行 (i+1)，不检查上一行 (i-1, i-2)
+   - 右列标签空值时，应向上查找右列内容
+   - 解决方案: Two-column layout 支持向上查找（方案 E）
+
+**下一步计划**:
+- Phase 1.3: 实施方案 E (Two-column upward lookup) + 方案 D (精准标签行检测)
+
+**Git Commit**: `29eea10a` - refactor(extract): Phase 1.1+1.2 upward lookup boundary fix
+
+---
+
+**最后更新**: 2025-11-20 18:35
