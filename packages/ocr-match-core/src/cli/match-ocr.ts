@@ -64,7 +64,7 @@ async function main() {
           .option('out', {
             type: 'string',
             demandOption: true,
-            description: 'Output directory for run bundle. Placeholders: {timestamp}, {sha}, {version}',
+            description: 'Output directory for run bundle. Placeholders: {timestamp}. Auto-appends __{sha}_{version}',
           })
           .option('config', {
             type: 'string',
@@ -170,12 +170,12 @@ async function main() {
     );
 
     // 2. 替换占位符生成输出目录
-    // 支持: {timestamp}, {ts}, {sha}, {version}
+    // 支持: {timestamp}, {ts}
+    // 自动追加: __{sha}_{version}（无需手动指定）
     const outputDir = args.out
       .replace(/\{timestamp\}/g, generateTimestamp())
       .replace(/\{ts\}/g, generateTimestamp())
-      .replace(/\{sha\}/g, config.sha)
-      .replace(/\{version\}/g, config.version);
+      + `__${config.sha}_${config.version}`;
 
     logger.info('cli.match-ocr', `Output: ${outputDir}`);
 

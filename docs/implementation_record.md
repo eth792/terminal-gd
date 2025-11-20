@@ -279,7 +279,7 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 - **score >= 0.82**: 基于案例分析，区分高质量（应通过）和不完整提取（需审核）
 - **位置**: 在 Rule 5（高置信度旁路）之后，Rule 6（delta 检查）之前
 
-**Git Commit**: `待提交` - feat(bucketize): add supplier perfect match bypass rule
+**Git Commit**: `8d01b845` - feat(bucketize): add supplier perfect match bypass rule (v0.1.9a)
 
 ---
 
@@ -334,7 +334,7 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 - `packages/ocr-match-core/src/cli/match-ocr.ts` - 支持 `{sha}`, `{version}` 占位符
 - `packages/ocr-match-core/src/report/writer.ts` - 优化 summary.md 格式
 
-**Git Commit**: `待提交` - feat(cli): support {sha} and {version} placeholders in --out (v0.1.9d)
+**Git Commit**: `b327a80e` - feat(cli): support {sha} and {version} placeholders in --out (v0.1.9d)
 
 ---
 
@@ -424,7 +424,7 @@ if (value.length === 0 && i + 1 < lines.length) {
 - **Case 2**: 当前标签在右列（>= 45），从下一行相同位置提取
 - **防护**: 检查提取值不包含其他标签
 
-**Git Commit**: `待提交` - feat(extractor): fix two-column layout extraction for SUPPLIER_HARD_REJECT
+**Git Commit**: `8dcdcfeb` - feat(extractor): fix two-column layout extraction (v0.1.9b)
 
 ---
 
