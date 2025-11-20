@@ -256,14 +256,19 @@ fail: {
 
 ## 索引自动构建机制
 
-**版本**: v0.1.9e 开始支持
+**版本**: v0.1.9e 开始支持，v0.1.9f 改为 digest-based 命名
 
 ### 工作原理
 
 当运行测试时，如果 `--index` 指定的索引文件不存在，CLI 会自动构建索引：
 
-1. **检测索引缺失**: 启动时检查索引文件是否存在
-2. **读取配置**: 从 `label_alias._dbColumnNames` 读取列名
+1. **计算 DB digest**: 扫描 `--db` 目录，计算所有文件的 SHA-256 联合 digest
+2. **解析 --index 参数**:
+   - 如果是目录 → 拼接 `index_{digest}.json`
+   - 如果包含 `{digest}` 占位符 → 替换为实际 digest
+   - 如果是完整路径 → 直接使用
+3. **检测索引缺失**: 检查解析后的索引文件是否存在
+4. **读取配置**: 从 `label_alias._dbColumnNames` 读取列名
    ```json
    {
      "_dbColumnNames": {
@@ -272,9 +277,9 @@ fail: {
      }
    }
    ```
-3. **扫描 DB 文件**: 自动扫描 `--db` 目录下的所有 `*.xlsx` 和 `*.csv` 文件
-4. **构建合并索引**: 多文件自动合并为单一索引
-5. **保存索引**: 保存到 `--index` 指定路径（自动创建目录）
+5. **扫描 DB 文件**: 自动扫描 `--db` 目录下的所有 `*.xlsx` 和 `*.csv` 文件
+6. **构建合并索引**: 多文件自动合并为单一索引
+7. **保存索引**: 保存到 `index_{digest}.json`（自动创建目录）
 
 ### 使用场景
 
@@ -286,20 +291,43 @@ fail: {
 **⚠️ 注意事项**:
 - 构建索引需要 1-2 分钟（取决于 DB 大小）
 - 构建后的索引会永久保存，下次运行直接复用
-- 如果 DB 文件变更，需要删除旧索引触发重建
+- **DB 变更后自动失效**：digest 改变 → 新文件名 → 旧索引不再使用
+
+### Digest-based 命名的优势
+
+**幂等性与可复用性**:
+```bash
+# 场景 1: 团队成员 A 构建索引
+pnpm test:full
+# → 生成 index_2f000cba.json (两文件合并，103k 行)
+
+# 场景 2: 团队成员 B 克隆仓库，复用 A 的索引
+pnpm test:full
+# → 计算 digest = 2f000cba → 文件已存在 → 跳过构建，直接使用
+
+# 场景 3: DB 变更后自动重建
+echo "new data" >> data/db/ledger-1.xlsx
+pnpm test:full
+# → 计算 digest = 8a3f7e91 (digest 改变) → index_8a3f7e91.json (新文件)
+# → 旧索引 index_2f000cba.json 不再使用，可手动删除
+```
 
 ### 手动触发重建
 
+**推荐方式**（digest-based 自动命名）:
 ```bash
-# 方法 1: 删除索引文件
-rm data/index/index_p0_v3.json
-pnpm test:full  # 自动重建
+# 只需运行 test:full，CLI 自动检测并重建
+pnpm test:full
+```
 
-# 方法 2: 使用 build-index 命令（推荐）
-pnpm -F ./packages/ocr-match-core build-index \
-  --db ./data/db \
-  --out ./data/index/index_p0_v3.json \
-  --config .
+**手动清理旧索引**:
+```bash
+# 删除特定 digest 的索引
+rm data/index/index_2f000cba.json
+
+# 清理所有索引（保留最新构建）
+rm data/index/index_*.json
+pnpm test:full  # 重新构建
 ```
 
 ### 配置要求
@@ -324,17 +352,24 @@ pnpm -F ./packages/ocr-match-core build-index \
 | 参数 | 说明 | 示例 |
 |------|------|------|
 | `--ocr` | OCR 文本目录 | `./data/ocr_txt` |
-| `--index` | 索引 JSON 文件 | `./runs/tmp/index_p0_v3.json` |
+| `--index` | 索引文件路径或目录 | `./data/index/` 或 `./data/index/index_{digest}.json` |
 | `--out` | 输出运行包目录 | `./runs/run_{timestamp}` |
 
-**注意**: `--out` 支持 `{timestamp}` 或 `{ts}` 占位符,自动替换为 `YYYYMMDD_HHmm` 格式
+**--index 参数详解**（v0.1.9f+）:
+- **目录模式**（推荐）: `--index ./data/index/` → 自动命名为 `index_{digest}.json`
+- **占位符模式**: `--index ./data/index/index_{digest}.json` → 替换为实际 digest
+- **完整路径**: `--index ./data/index/index_2f000cba.json` → 直接使用
+
+**占位符支持**:
+- `--out`: 支持 `{timestamp}` 或 `{ts}` → `YYYYMMDD_HHmm` 格式
+- `--index`: 支持 `{digest}` → DB SHA-256 前 8 位（如 `2f000cba`）
 
 ### 配置参数
 
 | 参数 | 说明 | 默认值 | 建议 |
 |------|------|--------|------|
 | `--config` | 配置根目录 | `process.cwd()` | 根目录: `.` |
-| `--db` | DB 文件路径 (用于 digest 校验) | - | `./data/db` |
+| `--db` | DB 文件/目录路径 | - | `./data/db`（**必须**，用于构建/命名/校验） |
 | `--allow-stale-index` | 跳过 digest 校验 | `false` | ⚠️ 仅用于调试 |
 
 ### 分桶决策参数 (影响 exact/review/fail 分类)

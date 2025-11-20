@@ -214,11 +214,14 @@
   - 本质是 DB 的"编译产物"（类似 `.js` 是 `.ts` 的编译产物）
   - **只要 DB 没变，index 可以永久复用**
   - 可选择提交（加速 CI）或 gitignore（减小仓库体积）
-  - 文件命名：`index_<descriptor>.json`（如 `index_p0_v3.json`）
+  - **命名规则**（v0.1.9f+）：`index_{digest}.json`
+    - `{digest}` = DB 内容的 SHA-256 前 8 位（如 `index_2f000cba.json`）
+    - **幂等性**：相同 DB → 相同文件名 → 自动去重
+    - **自动失效**：DB 变更 → 新 digest → 旧索引自然淘汰
   - **自动构建**：运行 `pnpm test:full` 时，如果索引不存在，会自动从 `data/db/` 构建
     - 列名从 `label_alias._dbColumnNames` 读取
     - 支持多文件合并（自动扫描 `*.xlsx` 和 `*.csv`）
-    - 构建后保存到 `--index` 指定路径
+    - 构建后保存到 `index_{digest}.json`
 
 - **data/ocr_txt/**：OCR 文本（调试用）
   - 存放 OCR 识别后的 `.txt` 文件

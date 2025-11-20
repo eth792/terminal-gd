@@ -59,7 +59,7 @@ async function main() {
           .option('index', {
             type: 'string',
             demandOption: true,
-            description: 'Path to index.json',
+            description: 'Path to index file or directory. Supports {digest} placeholder. If directory, auto-names index_{digest}.json',
           })
           .option('out', {
             type: 'string',
@@ -72,7 +72,7 @@ async function main() {
           })
           .option('db', {
             type: 'string',
-            description: 'Path to DB file for digest verification (optional)',
+            description: 'Path to DB file/dir. Required for auto-build, digest-based naming, and verification',
           })
           .option('allow-stale-index', {
             type: 'boolean',
@@ -169,7 +169,49 @@ async function main() {
       `Config loaded: version=${config.version}, sha=${config.sha}`
     );
 
-    // 2. 替换占位符生成输出目录
+    // 2. 计算 DB digest（用于 digest-based index naming）
+    let dbDigest = '';
+    if (args.db) {
+      const dbStat = fs_sync.statSync(args.db);
+      dbDigest = dbStat.isDirectory()
+        ? computeMultiFileDigest(scanDbDirectory(args.db))
+        : computeDigest(args.db);
+      logger.info('cli.match-ocr', `DB digest: ${dbDigest.substring(0, 16)}...`);
+    }
+
+    // 3. 处理 --index 参数（支持 {digest} 占位符和目录自动命名）
+    let indexPath = args.index;
+
+    // 3.1 替换 {digest} 占位符
+    if (indexPath.includes('{digest}')) {
+      if (!dbDigest) {
+        logger.error(
+          'cli.match-ocr',
+          `Cannot use {digest} placeholder without --db parameter`
+        );
+        process.exit(1);
+      }
+      indexPath = indexPath.replace(/\{digest\}/g, dbDigest.substring(0, 8));
+      logger.info('cli.match-ocr', `Resolved index path: ${indexPath}`);
+    }
+
+    // 3.2 如果是目录，自动拼接 digest-based 文件名
+    if (
+      indexPath.endsWith('/') ||
+      (fs_sync.existsSync(indexPath) && fs_sync.statSync(indexPath).isDirectory())
+    ) {
+      if (!dbDigest) {
+        logger.error(
+          'cli.match-ocr',
+          `Cannot auto-name index file without --db parameter`
+        );
+        process.exit(1);
+      }
+      indexPath = path.join(indexPath, `index_${dbDigest.substring(0, 8)}.json`);
+      logger.info('cli.match-ocr', `Auto-named index: ${indexPath}`);
+    }
+
+    // 4. 替换占位符生成输出目录
     // 支持: {timestamp}, {ts}
     // 自动追加: __{sha}_{version}（无需手动指定）
     const outputDir = args.out
@@ -179,11 +221,11 @@ async function main() {
 
     logger.info('cli.match-ocr', `Output: ${outputDir}`);
 
-    // 2. 加载索引（如果不存在则自动构建）
+    // 5. 加载索引（如果不存在则自动构建）
     let index: InvertedIndex;
 
-    if (!fs_sync.existsSync(args.index)) {
-      logger.warn('cli.match-ocr', `Index not found: ${args.index}`);
+    if (!fs_sync.existsSync(indexPath)) {
+      logger.warn('cli.match-ocr', `Index not found: ${indexPath}`);
 
       // 自动构建索引需要 --db 参数
       if (!args.db) {
@@ -220,16 +262,16 @@ async function main() {
       });
 
       // 保存索引到文件
-      const indexDir = path.dirname(args.index);
+      const indexDir = path.dirname(indexPath);
       if (!fs_sync.existsSync(indexDir)) {
         fs_sync.mkdirSync(indexDir, { recursive: true });
       }
-      await fs.writeFile(args.index, JSON.stringify(index, null, 2), 'utf-8');
+      await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
 
-      logger.info('cli.match-ocr', `Index saved to: ${args.index}`);
+      logger.info('cli.match-ocr', `Index saved to: ${indexPath}`);
     } else {
-      logger.info('cli.match-ocr', `Loading index from ${args.index}`);
-      const indexContent = await fs.readFile(args.index, 'utf-8');
+      logger.info('cli.match-ocr', `Loading index from ${indexPath}`);
+      const indexContent = await fs.readFile(indexPath, 'utf-8');
       index = JSON.parse(indexContent);
     }
 
