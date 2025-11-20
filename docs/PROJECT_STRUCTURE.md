@@ -15,11 +15,9 @@
 .
 ├─ data/
 │  ├─ db/             # ← 生产/开发读取的 Excel/CSV 数据源（不提交）
+│  ├─ index/          # ← DB 倒排索引（派生数据，可提交或 gitignore）
 │  ├─ ocr_txt/        # ← 本地OCR文本（调试用，可不提交）
 │  └─ images/         # ← 图片ocr输入源
-├─ .cache/
-│  └─ ocr-core/
-│     └─ indexes/     # ← DB索引缓存（不提交）
 ├── apps/
 │   └── electron-app/
 │       ├── CLAUDE.MD
@@ -172,7 +170,7 @@
   ```bash
   node --enable-source-maps packages/ocr-match-core/dist/cli/build-index.js \
     --db ./data/db/ledger-1.xlsx \
-    --out ./runs/tmp/index_ledger1.json \
+    --out ./data/index/index_ledger1.json \
     --field1 "s_field1" \
     --field2 "s_field2"
   ```
@@ -181,9 +179,9 @@
   ```bash
   node --enable-source-maps packages/ocr-match-core/dist/cli/match-ocr.js \
     --ocr ./data/ocr_txt \
-    --index ./runs/tmp/index_ledger1.json \
+    --index ./data/index/index_ledger1.json \
     --db ./data/db/ledger-1.xlsx \
-    --out ./runs/run_$(date +%Y%m%d_%H%M%S)__test \
+    --out ./runs/run_{timestamp} \
     --include-top3
   ```
 
@@ -199,6 +197,37 @@
 > - 使用 **path filter** (`-F ./path`) 而非包名，避免 pnpm 查找失败
 > - CLI 工具通过 `node --enable-source-maps` 直接调用编译后的脚本
 > - 所有命令支持 `--log-level debug|info|warn|error|silent` 控制日志级别
+
+---
+
+## 数据目录（data）规范
+
+**data/ 目录包含源数据和派生数据**：
+
+- **data/db/**：源数据（Excel/CSV）
+  - 存放原始业务数据（如 `ledger-1.xlsx`，`ledger-2.xlsx`）
+  - 通常不提交到 Git（大文件 + 敏感数据）
+  - 通过 `.gitignore` 排除
+
+- **data/index/**：派生数据（倒排索引）
+  - 存放 `build-index` 生成的 JSON 索引文件
+  - 本质是 DB 的"编译产物"（类似 `.js` 是 `.ts` 的编译产物）
+  - **只要 DB 没变，index 可以永久复用**
+  - 可选择提交（加速 CI）或 gitignore（减小仓库体积）
+  - 文件命名：`index_<descriptor>.json`（如 `index_p0_v3.json`）
+
+- **data/ocr_txt/**：OCR 文本（调试用）
+  - 存放 OCR 识别后的 `.txt` 文件
+  - 本地调试用，通常不提交
+
+- **data/images/**：图片源
+  - 存放待 OCR 的图片文件
+  - 可选择性提交（取决于是否需要版本控制图片）
+
+**关键设计原则**：
+- ✅ **源数据和派生数据放在一起** - `data/db/` 和 `data/index/` 平级，便于理解数据依赖关系
+- ✅ **index 不是临时文件** - 只要 DB digest 不变，index 就有效，不应放在 `runs/` 或 `.cache/`
+- ✅ **一目了然** - 新用户看到 `data/` 目录就知道所有数据在哪里
 
 ---
 
