@@ -309,8 +309,8 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 ### v0.1.9d - Run ID & Summary Format Optimization (2025-11-20)
 
 **实施内容**:
-- CLI `--out` 支持新占位符：`{sha}`, `{version}`（除原有的 `{timestamp}`）
-- 推荐格式：`runs/run_{timestamp}__{sha}_{version}`
+- CLI `--out` 自动追加 `__{sha}_{version}`（无需手动指定）
+- 支持占位符：`{timestamp}`
 - Summary.md 格式优化：
   1. 创建时间格式改为 `YYYY-MM-DD HH:mm:ss`
   2. 耗时信息（取整）提到创建时间后面
@@ -321,20 +321,20 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 
 **示例**:
 ```bash
-# 使用新占位符
---out runs/run_{timestamp}__{sha}_{version}
-# 生成：runs/run_20251120_03_07__c358299a_v0.1.9
+# 使用方式（自动追加 sha 和 version）
+--out runs/run_{timestamp}
+# 生成：runs/run_20251120_10_25__c358299a_v0.1.9
 
 # Summary.md 顶部
-**运行 ID**: `run_20251120_03_07__c358299a_v0.1.9`
-**创建时间**: 2025-11-20 03:07:53 | 总耗时: 37min | 平均: 10s/文件
+**运行 ID**: `run_20251120_10_25__c358299a_v0.1.9`
+**创建时间**: 2025-11-20 10:25:23 | 总耗时: 37min | 平均: 10s/文件
 ```
 
 **代码变更**:
-- `packages/ocr-match-core/src/cli/match-ocr.ts` - 支持 `{sha}`, `{version}` 占位符
+- `packages/ocr-match-core/src/cli/match-ocr.ts` - 自动追加 `__{sha}_{version}`
 - `packages/ocr-match-core/src/report/writer.ts` - 优化 summary.md 格式
 
-**Git Commit**: `b327a80e` - feat(cli): support {sha} and {version} placeholders in --out (v0.1.9d)
+**Git Commit**: `7639d73b` - feat(cli): auto-append sha and version to run_id (v0.1.9d)
 
 ---
 
