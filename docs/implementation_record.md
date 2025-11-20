@@ -7,9 +7,10 @@
 ## 🔗 快速导航
 
 ### 最新版本
-- **v0.1.9c** (2025-11-20) - Chinese-Friendly Report Format，新增 results_cn.csv
+- **v0.1.9d** (2025-11-20) - Run ID & Summary 格式优化
 
 ### 重要版本
+- **v0.1.9d** (2025-11-20) - Run ID 支持 {sha}/{version} 占位符，Summary 格式优化
 - **v0.1.9c** (2025-11-20) - 报告格式优化，中文友好版 CSV
 - **v0.1.9b** (2025-11-20) - 59.0% 自动通过率，两列布局提取修复 (+3.6%)
 - **v0.1.9a** (2025-11-20) - 55.4% 自动通过率，DELTA_TOO_SMALL 优化 (+13.1%)
@@ -302,6 +303,38 @@ if (top1.f1_score >= 0.95 && top1.score >= 0.82) {
 - `docs/TECHNICAL_DECISIONS.md` - 更新运行包结构说明
 
 **Git Commit**: `0130e4da` - feat(report): add results_cn.csv with Chinese-friendly columns (v0.1.9c)
+
+---
+
+### v0.1.9d - Run ID & Summary Format Optimization (2025-11-20)
+
+**实施内容**:
+- CLI `--out` 支持新占位符：`{sha}`, `{version}`（除原有的 `{timestamp}`）
+- 推荐格式：`runs/run_{timestamp}__{sha}_{version}`
+- Summary.md 格式优化：
+  1. 创建时间格式改为 `YYYY-MM-DD HH:mm:ss`
+  2. 耗时信息（取整）提到创建时间后面
+  3. 去掉"性能指标"栏（信息已合并到顶部）
+  4. 去掉底部冗余的"生成时间"
+
+**版本定位**: 运行包元数据优化 - 提升可追溯性和可读性
+
+**示例**:
+```bash
+# 使用新占位符
+--out runs/run_{timestamp}__{sha}_{version}
+# 生成：runs/run_20251120_03_07__c358299a_v0.1.9
+
+# Summary.md 顶部
+**运行 ID**: `run_20251120_03_07__c358299a_v0.1.9`
+**创建时间**: 2025-11-20 03:07:53 | 总耗时: 37min | 平均: 10s/文件
+```
+
+**代码变更**:
+- `packages/ocr-match-core/src/cli/match-ocr.ts` - 支持 `{sha}`, `{version}` 占位符
+- `packages/ocr-match-core/src/report/writer.ts` - 优化 summary.md 格式
+
+**Git Commit**: `待提交` - feat(cli): support {sha} and {version} placeholders in --out (v0.1.9d)
 
 ---
 

@@ -346,11 +346,15 @@ export async function writeSummaryMd(
     },
   };
 
+  // 计算取整的耗时
+  const totalDuration = formatDuration(Math.round(summary.performance.elapsed_ms));
+  const avgDuration = formatDuration(Math.round(summary.performance.avg_ms_per_file));
+
   // 生成 Markdown 内容
   const md = `# OCR 匹配运行报告
 
 **运行 ID**: \`${summary.run_id}\`
-**创建时间**: ${summary.created_at}
+**创建时间**: ${dayjs().format('YYYY-MM-DD HH:mm:ss')} | 总耗时: ${totalDuration} | 平均: ${avgDuration}/文件
 
 ---
 
@@ -382,13 +386,6 @@ ${
 
 ---
 
-## 性能指标
-
-- **总耗时**: ${formatDuration(summary.performance.elapsed_ms)}
-- **平均耗时**: ${formatDuration(summary.performance.avg_ms_per_file)}/文件
-
----
-
 ## 配置信息
 
 - **配置版本**: \`${summary.config.version}\`
@@ -403,9 +400,6 @@ ${
 ${JSON.stringify(bundleConfig.params, null, 2)}
 \`\`\`
 
----
-
-生成时间：${dayjs().format('YYYY-MM-DD HH:mm:ss')}
 `;
 
   const mdPath = path.join(bundleConfig.out_dir, 'summary.md');

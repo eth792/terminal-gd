@@ -64,7 +64,7 @@ async function main() {
           .option('out', {
             type: 'string',
             demandOption: true,
-            description: 'Output directory for run bundle (use {timestamp} for auto timestamp)',
+            description: 'Output directory for run bundle. Placeholders: {timestamp}, {sha}, {version}',
           })
           .option('config', {
             type: 'string',
@@ -153,18 +153,12 @@ async function main() {
 
   const startTime = Date.now();
 
-  // 替换 {timestamp} 或 {ts} 占位符为标准时间戳
-  const outputDir = args.out
-    .replace(/\{timestamp\}/g, generateTimestamp())
-    .replace(/\{ts\}/g, generateTimestamp());
-
   logger.info('cli.match-ocr', `Starting OCR matching...`);
   logger.info('cli.match-ocr', `OCR dir: ${args.ocr}`);
   logger.info('cli.match-ocr', `Index: ${args.index}`);
-  logger.info('cli.match-ocr', `Output: ${outputDir}`);
 
   try {
-    // 1. 加载配置
+    // 1. 加载配置（需要先加载才能替换 {sha} 和 {version} 占位符）
     const repoRoot = args.config || process.cwd();
 
     logger.info('cli.match-ocr', `Loading config from ${repoRoot}`);
@@ -174,6 +168,16 @@ async function main() {
       'cli.match-ocr',
       `Config loaded: version=${config.version}, sha=${config.sha}`
     );
+
+    // 2. 替换占位符生成输出目录
+    // 支持: {timestamp}, {ts}, {sha}, {version}
+    const outputDir = args.out
+      .replace(/\{timestamp\}/g, generateTimestamp())
+      .replace(/\{ts\}/g, generateTimestamp())
+      .replace(/\{sha\}/g, config.sha)
+      .replace(/\{version\}/g, config.version);
+
+    logger.info('cli.match-ocr', `Output: ${outputDir}`);
 
     // 2. 加载索引
     logger.info('cli.match-ocr', `Loading index from ${args.index}`);
