@@ -173,9 +173,13 @@ async function main() {
     let dbDigest = '';
     if (args.db) {
       const dbStat = fs_sync.statSync(args.db);
-      dbDigest = dbStat.isDirectory()
-        ? computeMultiFileDigest(scanDbDirectory(args.db))
-        : computeDigest(args.db);
+      const dbFiles = dbStat.isDirectory()
+        ? scanDbDirectory(args.db)
+        : [args.db];
+      // 统一逻辑：单文件直接hash，多文件联合hash（与 builder.ts 保持一致）
+      dbDigest = dbFiles.length === 1
+        ? computeDigest(dbFiles[0])
+        : computeMultiFileDigest(dbFiles);
       logger.info('cli.match-ocr', `DB digest: ${dbDigest.substring(0, 16)}...`);
     }
 
@@ -225,7 +229,11 @@ async function main() {
     let index: InvertedIndex;
 
     if (!fs_sync.existsSync(indexPath)) {
-      logger.warn('cli.match-ocr', `Index not found: ${indexPath}`);
+      logger.warn(
+        'cli.match-ocr',
+        `⚠️  Index not found: ${indexPath}\n` +
+        `   → Auto-building index from DB...`
+      );
 
       // 自动构建索引需要 --db 参数
       if (!args.db) {
@@ -236,7 +244,7 @@ async function main() {
         process.exit(1);
       }
 
-      logger.info('cli.match-ocr', `Auto-building index from DB: ${args.db}`);
+      logger.info('cli.match-ocr', `Building index from DB: ${args.db}`);
 
       // 从 label_alias._dbColumnNames 读取列名
       const dbColumnNames = config.label_alias._dbColumnNames;
@@ -268,7 +276,7 @@ async function main() {
       }
       await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
 
-      logger.info('cli.match-ocr', `Index saved to: ${indexPath}`);
+      logger.info('cli.match-ocr', `✓ Index built and saved to: ${indexPath}`);
     } else {
       logger.info('cli.match-ocr', `Loading index from ${indexPath}`);
       const indexContent = await fs.readFile(indexPath, 'utf-8');
@@ -286,23 +294,60 @@ async function main() {
 
       // 检测是文件还是目录
       const stat = fs_sync.statSync(args.db);
-      const currentDigest = stat.isDirectory()
-        ? computeMultiFileDigest(scanDbDirectory(args.db))
-        : computeDigest(args.db);
+      const verifyDbFiles = stat.isDirectory()
+        ? scanDbDirectory(args.db)
+        : [args.db];
+      // 统一逻辑：单文件直接hash，多文件联合hash（与 builder.ts 保持一致）
+      const currentDigest = verifyDbFiles.length === 1
+        ? computeDigest(verifyDbFiles[0])
+        : computeMultiFileDigest(verifyDbFiles);
 
       if (index.digest !== currentDigest) {
-        logger.error(
+        logger.warn(
           'cli.match-ocr',
-          `Index digest mismatch!\n` +
-            `  Expected (index): ${index.digest.substring(0, 16)}...\n` +
-            `  Actual (DB):      ${currentDigest.substring(0, 16)}...\n` +
-            `  Reason: DB files have changed since index was built.\n` +
-            `  Fix: Re-run 'ocr-core build-index' or use --allow-stale-index`
+          `⚠️  Index is stale (DB has changed)\n` +
+            `   Index digest: ${index.digest.substring(0, 16)}...\n` +
+            `   DB digest:    ${currentDigest.substring(0, 16)}...\n` +
+            `   → Auto-rebuilding index from current DB...`
         );
-        throw new Error('Index digest mismatch - DB has changed since index was built');
-      }
 
-      logger.info('cli.match-ocr', `✓ Digest verification passed`);
+        // 删除过期索引
+        fs_sync.unlinkSync(indexPath);
+        logger.info('cli.match-ocr', `Deleted stale index: ${indexPath}`);
+
+        // 重建索引（复用构建逻辑）
+        const dbColumnNames = config.label_alias._dbColumnNames;
+        if (!dbColumnNames?.supplier?.[0] || !dbColumnNames?.project?.[0]) {
+          logger.error(
+            'cli.match-ocr',
+            `Cannot rebuild index: label_alias._dbColumnNames is missing or incomplete`
+          );
+          process.exit(1);
+        }
+
+        const field1Column = dbColumnNames.supplier[0];
+        const field2Column = dbColumnNames.project[0];
+
+        logger.info('cli.match-ocr', `Rebuilding index from DB with columns: field1="${field1Column}", field2="${field2Column}"`);
+
+        index = await buildIndex(args.db, config.normalize, {
+          ngramSize: 2,
+          field1Column,
+          field2Column,
+          labelAliasConfig: config.label_alias,
+        });
+
+        // 保存新索引
+        const indexDir = path.dirname(indexPath);
+        if (!fs_sync.existsSync(indexDir)) {
+          fs_sync.mkdirSync(indexDir, { recursive: true });
+        }
+        await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+
+        logger.info('cli.match-ocr', `✓ Index rebuilt and saved to: ${indexPath}`);
+      } else {
+        logger.info('cli.match-ocr', `✓ Digest verification passed`);
+      }
     } else if (args.db && args.allowStaleIndex) {
       logger.warn('cli.match-ocr', `--allow-stale-index is set, skipping digest check`);
     }
