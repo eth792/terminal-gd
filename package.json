@@ -13,6 +13,7 @@
     "test:full": "pnpm -F ./packages/ocr-match-core test:full",
     "test:quick": "pnpm -F ./packages/ocr-match-core test:quick",
     "test:custom": "pnpm -F ./packages/ocr-match-core test:custom",
-    "test:sample": "bash scripts/run-sample-test.sh"
+    "test:sample": "bash scripts/run-sample-test.sh",
+    "match-table": "bash scripts/match-table.sh"
   }
 }

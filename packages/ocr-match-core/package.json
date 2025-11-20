@@ -11,10 +11,11 @@
   "bin": {
     "ocr-core": "./dist/cli/match-ocr.js",
     "ocr-build-index": "./dist/cli/build-index.js",
+    "ocr-match-table": "./dist/cli/match-table.js",
     "ocr-eval": "./dist/cli/eval-sidecar.js"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/cli/build-index.ts src/cli/match-ocr.ts src/cli/eval-sidecar.ts --format esm --dts --sourcemap --clean",
+    "build": "tsup src/index.ts src/cli/build-index.ts src/cli/match-ocr.ts src/cli/match-table.ts src/cli/eval-sidecar.ts --format esm --dts --sourcemap --clean",
     "dev": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js",
     "build-index": "node --enable-source-maps dist/cli/build-index.js",
     "match-ocr": "node --enable-source-maps dist/cli/match-ocr.js",
@@ -31,12 +32,14 @@
     "dayjs": "^1.11.13",
     "fastest-levenshtein": "^1.0.16",
     "iconv-lite": "^0.6.3",
+    "papaparse": "^5.4.1",
     "xlsx": "^0.18.5",
     "yargs": "^17.7.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
+    "@types/papaparse": "^5.3.7",
     "@types/yargs": "^17.0.34",
     "tsup": "^8.1.0",
     "typescript": "^5.6.3"
