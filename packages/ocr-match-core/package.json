@@ -19,11 +19,11 @@
     "build-index": "node --enable-source-maps dist/cli/build-index.js",
     "match-ocr": "node --enable-source-maps dist/cli/match-ocr.js",
     "eval": "node --enable-source-maps dist/cli/eval-sidecar.js",
-    "test:full": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js --ocr ../../data/ocr_txt --index ../../runs/tmp/index_p0_v3.json --out ../../runs/run_{timestamp} --config ../.. --db ../../data/db --topk 3",
-    "test:quick": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js --ocr ../../data/ocr_txt --index ../../runs/tmp/index_p0_v3.json --out ../../runs/run_{timestamp} --config ../.. --allow-stale-index --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3",
+    "test:full": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js --ocr ../../data/ocr_txt --index ../../data/index/index_p0_v3.json --out ../../runs/run_{timestamp} --config ../.. --db ../../data/db --topk 3",
+    "test:quick": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js --ocr ../../data/ocr_txt --index ../../data/index/index_p0_v3.json --out ../../runs/run_{timestamp} --config ../.. --allow-stale-index --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3",
     "test:custom": "pnpm build && node --enable-source-maps dist/cli/match-ocr.js",
     "sample": "node ../../scripts/sample-test-cases.js ../../runs/run_latest",
-    "sample-internal": "pnpm sample && pnpm build && pnpm match-ocr --ocr ../../data/ocr_txt --index ../../runs/tmp/index_p0_v3.json --out ../../runs/run_sample_{timestamp} --config ../.. --db ../../data/db --files ../../runs/tmp/sample_files.txt --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3",
+    "sample-internal": "pnpm sample && pnpm build && pnpm match-ocr --ocr ../../data/ocr_txt --index ../../data/index/index_p0_v3.json --out ../../runs/run_sample_{timestamp} --config ../.. --db ../../data/db --files ../../runs/tmp/sample_files.txt --autoPass 0.7 --minFieldSim 0.6 --minDeltaTop 0.03 --topk 3",
     "test:sample": "bash ../../scripts/run-sample-test.sh"
   },
   "dependencies": {
