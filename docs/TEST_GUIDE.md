@@ -45,6 +45,7 @@ pnpm test:custom -- <参数>
 
 **特点**:
 - ✅ 构建最新代码 (`pnpm build`)
+- ✅ **索引自动构建** (如果索引不存在,自动从 `data/db/` 构建)
 - ✅ DB digest 校验 (确保索引与 DB 同步)
 - ✅ 自动生成时间戳运行包 (`run_{timestamp}`)
 - ✅ 使用当前配置版本 (`configs/latest.json`)
@@ -250,6 +251,69 @@ fail: {
 - ⚠️ 采样测试**失败**则完整测试必然失败 (早期预警)
 - ⚠️ 每次算法改动后,建议至少运行一次 `test:full` 更新 baseline
 - ✅ 采样结果具有代表性,可快速发现明显回归
+
+---
+
+## 索引自动构建机制
+
+**版本**: v0.1.9e 开始支持
+
+### 工作原理
+
+当运行测试时，如果 `--index` 指定的索引文件不存在，CLI 会自动构建索引：
+
+1. **检测索引缺失**: 启动时检查索引文件是否存在
+2. **读取配置**: 从 `label_alias._dbColumnNames` 读取列名
+   ```json
+   {
+     "_dbColumnNames": {
+       "supplier": ["供应单位名称"],
+       "project": ["单体工程名称"]
+     }
+   }
+   ```
+3. **扫描 DB 文件**: 自动扫描 `--db` 目录下的所有 `*.xlsx` 和 `*.csv` 文件
+4. **构建合并索引**: 多文件自动合并为单一索引
+5. **保存索引**: 保存到 `--index` 指定路径（自动创建目录）
+
+### 使用场景
+
+**✅ 适用于**:
+- 新用户首次运行测试（无需手动构建索引）
+- 索引文件被误删除
+- 更换数据目录后重新构建
+
+**⚠️ 注意事项**:
+- 构建索引需要 1-2 分钟（取决于 DB 大小）
+- 构建后的索引会永久保存，下次运行直接复用
+- 如果 DB 文件变更，需要删除旧索引触发重建
+
+### 手动触发重建
+
+```bash
+# 方法 1: 删除索引文件
+rm data/index/index_p0_v3.json
+pnpm test:full  # 自动重建
+
+# 方法 2: 使用 build-index 命令（推荐）
+pnpm -F ./packages/ocr-match-core build-index \
+  --db ./data/db \
+  --out ./data/index/index_p0_v3.json \
+  --config .
+```
+
+### 配置要求
+
+自动构建依赖以下配置：
+
+1. **必须提供 `--db` 参数**: 指定 DB 文件或目录
+2. **配置文件必须包含 `_dbColumnNames`**: 定义列名映射
+
+如果缺少上述配置，会报错：
+```
+[ERROR] Cannot auto-build index: --db parameter is required
+[ERROR] Cannot auto-build index: label_alias._dbColumnNames is missing or incomplete
+```
 
 ---
 

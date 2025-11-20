@@ -215,6 +215,10 @@
   - **只要 DB 没变，index 可以永久复用**
   - 可选择提交（加速 CI）或 gitignore（减小仓库体积）
   - 文件命名：`index_<descriptor>.json`（如 `index_p0_v3.json`）
+  - **自动构建**：运行 `pnpm test:full` 时，如果索引不存在，会自动从 `data/db/` 构建
+    - 列名从 `label_alias._dbColumnNames` 读取
+    - 支持多文件合并（自动扫描 `*.xlsx` 和 `*.csv`）
+    - 构建后保存到 `--index` 指定路径
 
 - **data/ocr_txt/**：OCR 文本（调试用）
   - 存放 OCR 识别后的 `.txt` 文件

@@ -13,7 +13,7 @@ import { matchOcrBatch } from '../match.js';
 import { DEFAULT_BUCKET_CONFIG } from '../bucket/bucketize.js';
 import { writeRunBundle, JsonlLogger } from '../report/writer.js';
 import type { InvertedIndex } from '../indexer/types.js';
-import { computeDigest, computeMultiFileDigest, scanDbDirectory } from '../indexer/builder.js';
+import { computeDigest, computeMultiFileDigest, scanDbDirectory, buildIndex } from '../indexer/builder.js';
 import { logger } from '../util/log.js';
 import fs_sync from 'fs';
 
@@ -179,10 +179,59 @@ async function main() {
 
     logger.info('cli.match-ocr', `Output: ${outputDir}`);
 
-    // 2. 加载索引
-    logger.info('cli.match-ocr', `Loading index from ${args.index}`);
-    const indexContent = await fs.readFile(args.index, 'utf-8');
-    const index: InvertedIndex = JSON.parse(indexContent);
+    // 2. 加载索引（如果不存在则自动构建）
+    let index: InvertedIndex;
+
+    if (!fs_sync.existsSync(args.index)) {
+      logger.warn('cli.match-ocr', `Index not found: ${args.index}`);
+
+      // 自动构建索引需要 --db 参数
+      if (!args.db) {
+        logger.error(
+          'cli.match-ocr',
+          `Cannot auto-build index: --db parameter is required`
+        );
+        process.exit(1);
+      }
+
+      logger.info('cli.match-ocr', `Auto-building index from DB: ${args.db}`);
+
+      // 从 label_alias._dbColumnNames 读取列名
+      const dbColumnNames = config.label_alias._dbColumnNames;
+      if (!dbColumnNames?.supplier?.[0] || !dbColumnNames?.project?.[0]) {
+        logger.error(
+          'cli.match-ocr',
+          `Cannot auto-build index: label_alias._dbColumnNames is missing or incomplete`
+        );
+        process.exit(1);
+      }
+
+      const field1Column = dbColumnNames.supplier[0];
+      const field2Column = dbColumnNames.project[0];
+
+      logger.info('cli.match-ocr', `Using columns: field1="${field1Column}", field2="${field2Column}"`);
+
+      // 构建索引
+      index = await buildIndex(args.db, config.normalize, {
+        ngramSize: 2,
+        field1Column,
+        field2Column,
+        labelAliasConfig: config.label_alias,
+      });
+
+      // 保存索引到文件
+      const indexDir = path.dirname(args.index);
+      if (!fs_sync.existsSync(indexDir)) {
+        fs_sync.mkdirSync(indexDir, { recursive: true });
+      }
+      await fs.writeFile(args.index, JSON.stringify(index, null, 2), 'utf-8');
+
+      logger.info('cli.match-ocr', `Index saved to: ${args.index}`);
+    } else {
+      logger.info('cli.match-ocr', `Loading index from ${args.index}`);
+      const indexContent = await fs.readFile(args.index, 'utf-8');
+      index = JSON.parse(indexContent);
+    }
 
     logger.info(
       'cli.match-ocr',
