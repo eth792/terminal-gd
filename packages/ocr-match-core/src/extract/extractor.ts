@@ -94,7 +94,14 @@ function extractField(lines: string[], linesRaw: string[], labels: string[], noi
 
         const hasCurrentLabel = labels.some(l => nextLine.includes(l));
 
-        if (!hasCurrentLabel && nextLine.length > 0) {
+        // v0.1.9c Phase 1.2: 增加下一行内容有效性检查，防止提取垃圾 OCR 识别内容
+        // 问题案例：baoshengkejichuangxingufenyouxiangongsi4100912930.txt
+        // Line 7: "工程名称：" (空值) → Line 8: "社代宝工理" (垃圾识别)
+        // 修复：只有当下一行包含有效实体词时才提取
+        const hasValidEntity = /公司|有限|集团|工程|项目|线路|站|小区|改造/.test(nextLine);
+        const isLikelyGarbage = nextLine.length < 10 && !/公司|有限|集团/.test(nextLine);
+
+        if (!hasCurrentLabel && nextLine.length > 0 && hasValidEntity && !isLikelyGarbage) {
           if (nextIndent >= 50) {
             // Case 1: 下一行整体深度缩进（下一行只有右列内容）
             value = nextLine;
@@ -119,12 +126,22 @@ function extractField(lines: string[], linesRaw: string[], labels: string[], noi
         (i > 0 && !/公司|有限|集团/.test(value) && /公司|有限|集团|工程|项目|线路|站|小区|改造/.test(linesRaw[i - 1])); // 策略3
 
       if (needLookupPrev && i > 0) {
+        // v0.1.9c Phase 1.1: 将标签定义移到前面，确保 Line 127 和 Line 149 都能使用
+        // 当前字段标签（工程名称）：允许向上跨越这些标签
+        const currentFieldLabels = ['工程名称', '项目名称'];
+        // 其他字段标签：遇到这些标签时停止向上查找
+        const otherFieldLabels = ['供应商', '供应单位', '项目管理单位', '订货通知单号', '订单号'];
+
         let prevLineRaw = linesRaw[i - 1];
         let prevLine = prevLineRaw.trim();
         let lookupIndex = i - 1;
 
-        // 特殊情况：如果标签后值完全为空，且上一行包含标签，跳过上一行继续向上查找
-        if (value.length === 0 && labels.some(l => prevLine.includes(l)) && i > 1) {
+        // 特殊情况：如果标签后值完全为空，且上一行包含当前字段标签，跳过上一行继续向上查找
+        // v0.1.9c Phase 1.1: 修复 - 使用 currentFieldLabels 而非 labels
+        const hasCurrentFieldLabelOnPrevLine = currentFieldLabels.some(l =>
+          prevLine.includes(l) && prevLine.indexOf(l) < 10
+        );
+        if (value.length === 0 && hasCurrentFieldLabelOnPrevLine && i > 1) {
           lookupIndex = i - 2;
           prevLineRaw = linesRaw[lookupIndex];
           prevLine = prevLineRaw.trim();
@@ -132,16 +149,16 @@ function extractField(lines: string[], linesRaw: string[], labels: string[], noi
 
         // 向上查找条件：
         // 1. 上一行不为空
-        // 2. 上一行不包含其他标签
+        // 2. 上一行不包含其他字段的标签（但允许包含当前字段的标签，支持跨行匹配）
         // 3. 满足以下任一条件：
         //    a) 包含典型的实体词
         //    b) 有深度缩进（>= 60）且不以分隔符开头
-        const hasOtherLabel = labels.some(l => prevLine.includes(l));
+        const hasOtherFieldLabel = otherFieldLabels.some(l => prevLine.includes(l));
         const hasEntity = /公司|有限|集团|工程|项目|线路|站|小区|改造/.test(prevLine);
         const prevLineIndent = prevLineRaw.length - prevLineRaw.trimStart().length;
         const isDeepIndentValue = prevLineIndent >= 60 && !/^[:：、，。；]/.test(prevLine);
 
-        if (prevLine && !hasOtherLabel && (hasEntity || isDeepIndentValue)) {
+        if (prevLine && !hasOtherFieldLabel && (hasEntity || isDeepIndentValue)) {
           // 拼接找到的行 + 当前行的值
           value = prevLine + (value ? ' ' + value : '');
         }
